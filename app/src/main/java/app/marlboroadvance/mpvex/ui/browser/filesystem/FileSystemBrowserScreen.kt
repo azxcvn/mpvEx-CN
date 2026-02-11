@@ -1678,7 +1678,7 @@ fun FileSystemSortDialog(
   SortDialog(
     isOpen = isOpen,
     onDismiss = onDismiss,
-    title = "Sort & View Options",
+    title = "排序和视图选项",
     sortType = folderSortType.displayName,
     onSortTypeChange = { typeName ->
       app.marlboroadvance.mpvex.preferences.FolderSortType.entries.find { it.displayName == typeName }?.let {
@@ -1705,16 +1705,16 @@ fun FileSystemSortDialog(
     getLabelForType = { type, _ ->
       when (type) {
         app.marlboroadvance.mpvex.preferences.FolderSortType.Title.displayName -> Pair("A-Z", "Z-A")
-        app.marlboroadvance.mpvex.preferences.FolderSortType.Date.displayName -> Pair("Oldest", "Newest")
-        app.marlboroadvance.mpvex.preferences.FolderSortType.Size.displayName -> Pair("Smallest", "Largest")
-        else -> Pair("Asc", "Desc")
+        app.marlboroadvance.mpvex.preferences.FolderSortType.Date.displayName -> Pair("最旧", "最新")
+        app.marlboroadvance.mpvex.preferences.FolderSortType.Size.displayName -> Pair("最小", "最大")
+        else -> Pair("升序", "降序")
       }
     },
     showSortOptions = true,
     viewModeSelector = ViewModeSelector(
-      label = "View Mode",
-      firstOptionLabel = "Folder",
-      secondOptionLabel = "Tree",
+      label = "视图模式",
+      firstOptionLabel = "文件夹",
+      secondOptionLabel = "树状",
       firstOptionIcon = Icons.Filled.ViewModule,
       secondOptionIcon = Icons.Filled.AccountTree,
       isFirstOptionSelected = folderViewMode == app.marlboroadvance.mpvex.preferences.FolderViewMode.AlbumView,
@@ -1729,9 +1729,9 @@ fun FileSystemSortDialog(
       },
     ),
     layoutModeSelector = ViewModeSelector(
-      label = "Layout",
-      firstOptionLabel = "List",
-      secondOptionLabel = "Grid",
+      label = "布局",
+      firstOptionLabel = "列表",
+      secondOptionLabel = "网格",
       firstOptionIcon = Icons.AutoMirrored.Filled.ViewList,
       secondOptionIcon = Icons.Filled.GridView,
       isFirstOptionSelected = mediaLayoutMode == MediaLayoutMode.LIST,
@@ -1747,52 +1747,52 @@ fun FileSystemSortDialog(
     enableLayoutModeOptions = true,
     visibilityToggles = listOf(
       VisibilityToggle(
-        label = "Video Thumbnails",
+        label = "视频缩略图",
         checked = showVideoThumbnails,
         onCheckedChange = { browserPreferences.showVideoThumbnails.set(it) },
       ),
       VisibilityToggle(
-        label = "Full Name",
+        label = "完整名称",
         checked = unlimitedNameLines,
         onCheckedChange = { appearancePreferences.unlimitedNameLines.set(it) },
       ),
       VisibilityToggle(
-        label = "Path",
+        label = "路径",
         checked = showFolderPath,
         onCheckedChange = { browserPreferences.showFolderPath.set(it) },
       ),
       VisibilityToggle(
-        label = "Total Videos",
+        label = "视频总数",
         checked = showTotalVideosChip,
         onCheckedChange = { browserPreferences.showTotalVideosChip.set(it) },
       ),
       VisibilityToggle(
-        label = "Folder Size",
+        label = "文件夹大小",
         checked = showTotalSizeChip,
         onCheckedChange = { browserPreferences.showTotalSizeChip.set(it) },
       ),
       VisibilityToggle(
-        label = "Size",
+        label = "大小",
         checked = showSizeChip,
         onCheckedChange = { browserPreferences.showSizeChip.set(it) },
       ),
       VisibilityToggle(
-        label = "Resolution",
+        label = "分辨率",
         checked = showResolutionChip,
         onCheckedChange = { browserPreferences.showResolutionChip.set(it) },
       ),
       VisibilityToggle(
-        label = "Framerate",
+        label = "帧率",
         checked = showFramerateInResolution,
         onCheckedChange = { browserPreferences.showFramerateInResolution.set(it) },
       ),
       VisibilityToggle(
-        label = "Subtitle",
+        label = "字幕",
         checked = showSubtitleIndicator,
         onCheckedChange = { browserPreferences.showSubtitleIndicator.set(it) },
       ),
       VisibilityToggle(
-        label = "Progress Bar",
+        label = "进度条",
         checked = showProgressBar,
         onCheckedChange = { browserPreferences.showProgressBar.set(it) },
       ),

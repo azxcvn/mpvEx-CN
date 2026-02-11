@@ -1053,7 +1053,7 @@ private fun FolderSortDialog(
   SortDialog(
     isOpen = isOpen,
     onDismiss = onDismiss,
-    title = if (isAlbumView) "Sort & View Options" else "View Options",
+    title = if (isAlbumView) "排序和视图选项" else "视图选项",
     sortType = sortType.displayName,
     onSortTypeChange = { typeName ->
       FolderSortType.entries
@@ -1077,16 +1077,16 @@ private fun FolderSortDialog(
     getLabelForType = { type, _ ->
       when (type) {
         FolderSortType.Title.displayName -> Pair("A-Z", "Z-A")
-        FolderSortType.Date.displayName -> Pair("Oldest", "Newest")
-        FolderSortType.Size.displayName -> Pair("Smallest", "Largest")
-        else -> Pair("Asc", "Desc")
+        FolderSortType.Date.displayName -> Pair("最旧", "最新")
+        FolderSortType.Size.displayName -> Pair("最小", "最大")
+        else -> Pair("升序", "降序")
       }
     },
     showSortOptions = isAlbumView,
     viewModeSelector = ViewModeSelector(
-      label = "View Mode",
-      firstOptionLabel = "Folder",
-      secondOptionLabel = "Tree",
+      label = "视图模式",
+      firstOptionLabel = "文件夹",
+      secondOptionLabel = "树状",
       firstOptionIcon = Icons.Filled.ViewModule,
       secondOptionIcon = Icons.Filled.AccountTree,
       isFirstOptionSelected = folderViewMode == FolderViewMode.AlbumView,
@@ -1097,9 +1097,9 @@ private fun FolderSortDialog(
       },
     ),
     layoutModeSelector = ViewModeSelector(
-      label = "Layout",
-      firstOptionLabel = "List",
-      secondOptionLabel = "Grid",
+      label = "布局",
+      firstOptionLabel = "列表",
+      secondOptionLabel = "网格",
       firstOptionIcon = Icons.AutoMirrored.Filled.ViewList,
       secondOptionIcon = Icons.Filled.GridView,
       isFirstOptionSelected = mediaLayoutMode == MediaLayoutMode.LIST,
@@ -1111,27 +1111,27 @@ private fun FolderSortDialog(
     ),
     visibilityToggles = listOf(
       VisibilityToggle(
-        label = "Full Name",
+        label = "完整名称",
         checked = unlimitedNameLines,
         onCheckedChange = { appearancePreferences.unlimitedNameLines.set(it) },
       ),
       VisibilityToggle(
-        label = "Path",
+        label = "路径",
         checked = showFolderPath,
         onCheckedChange = { browserPreferences.showFolderPath.set(it) },
       ),
       VisibilityToggle(
-        label = "Total Videos",
+        label = "视频总数",
         checked = showTotalVideosChip,
         onCheckedChange = { browserPreferences.showTotalVideosChip.set(it) },
       ),
       VisibilityToggle(
-        label = "Total Duration",
+        label = "总时长",
         checked = showTotalDurationChip,
         onCheckedChange = { browserPreferences.showTotalDurationChip.set(it) },
       ),
       VisibilityToggle(
-        label = "Folder Size",
+        label = "文件夹大小",
         checked = showTotalSizeChip,
         onCheckedChange = { browserPreferences.showTotalSizeChip.set(it) },
       ),
