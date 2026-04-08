@@ -1,8 +1,5 @@
 pluginManagement {
   repositories {
-    maven(url = "https://maven.aliyun.com/repository/public")
-    maven(url = "https://maven.aliyun.com/repository/google")
-    maven(url = "https://maven.aliyun.com/repository/gradle-plugin")
     google {
       content {
         includeGroupByRegex("com\\.android.*")
@@ -12,6 +9,9 @@ pluginManagement {
     }
     mavenCentral()
     gradlePluginPortal()
+    maven(url = "https://maven.aliyun.com/repository/public")
+    maven(url = "https://maven.aliyun.com/repository/google")
+    maven(url = "https://maven.aliyun.com/repository/gradle-plugin")
   }
 }
 plugins {
@@ -20,8 +20,6 @@ plugins {
 dependencyResolutionManagement {
   repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
   repositories {
-    maven(url = "https://maven.aliyun.com/repository/public")
-    maven(url = "https://maven.aliyun.com/repository/google")
     google()
     mavenCentral()
     maven(url = "https://www.jitpack.io") {
@@ -35,6 +33,8 @@ dependencyResolutionManagement {
         includeGroup("com.github.nanihadesuka")
       }
     }
+    maven(url = "https://maven.aliyun.com/repository/public")
+    maven(url = "https://maven.aliyun.com/repository/google")
   }
 }
 
