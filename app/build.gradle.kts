@@ -232,28 +232,14 @@ dependencies {
   implementation(libs.reorderable)
 }
 
-/* ---------------- Git helpers ---------------- */
+/* ---------------- Git helpers (configuration-cache compatible) ---------------- */
 
 fun getCommitCount(): String =
-  runCommand("git rev-list --count HEAD") ?: "0"
+  providers.exec {
+    commandLine("git", "rev-list", "--count", "HEAD")
+  }.standardOutput.asText.get().trim().ifEmpty { "0" }
 
 fun getCommitSha(): String =
-  runCommand("git rev-parse --short HEAD") ?: "unknown"
-
-fun runCommand(command: String): String? =
-  try {
-    val parts = command.split(' ')
-    val process = ProcessBuilder(parts)
-      .redirectErrorStream(true)
-      .start()
-
-    val output = process.inputStream
-      .bufferedReader()
-      .readText()
-      .trim()
-
-    process.waitFor()
-    output.ifEmpty { null }
-  } catch (e: Exception) {
-    null
-  }
+  providers.exec {
+    commandLine("git", "rev-parse", "--short", "HEAD")
+  }.standardOutput.asText.get().trim().ifEmpty { "unknown" }
