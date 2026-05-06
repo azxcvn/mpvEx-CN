@@ -123,7 +123,7 @@ fun FolderCard(
         ) {
           Icon(
             customIcon ?: Icons.Filled.Folder,
-            contentDescription = "Folder",
+            contentDescription = "文件夹",
             modifier = Modifier.size(56.dp),
             tint = MaterialTheme.colorScheme.secondary,
           )
@@ -179,7 +179,7 @@ fun FolderCard(
 
         if (showTotalVideosChip && folder.videoCount > 0) {
           Text(
-            if (folder.videoCount == 1) "1 Video" else "${folder.videoCount} Videos",
+            if (folder.videoCount == 1) "1 个视频" else "${folder.videoCount} 个视频",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme. onSurfaceVariant,
           )
@@ -210,7 +210,7 @@ fun FolderCard(
         ) {
           Icon(
             customIcon ?: Icons.Filled.Folder,
-            contentDescription = "Folder",
+            contentDescription = "文件夹",
             modifier = Modifier.size(48.dp),
             tint = MaterialTheme.colorScheme.secondary,
           )

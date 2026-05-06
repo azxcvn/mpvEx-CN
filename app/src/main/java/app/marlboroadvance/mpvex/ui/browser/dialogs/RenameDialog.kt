@@ -51,12 +51,12 @@ fun RenameDialog(
     when {
       baseName.value.isBlank() -> {
         isError.value = true
-        errorMessage.value = "Name cannot be empty"
+        errorMessage.value = "名称不能为空"
       }
 
       baseName.value.contains("/") || baseName.value.contains("\\") -> {
         isError.value = true
-        errorMessage.value = "Name cannot contain / or \\"
+        errorMessage.value = "名称不能包含 / 或 \\"
       }
 
       else -> {
@@ -70,7 +70,7 @@ fun RenameDialog(
     onDismissRequest = onDismiss,
     title = {
       Text(
-        text = "Rename $itemType",
+        text = "重命名$itemType",
         style = MaterialTheme.typography.headlineMedium,
         fontWeight = FontWeight.Bold,
       )
@@ -92,7 +92,7 @@ fun RenameDialog(
               Modifier
                 .fillMaxWidth()
                 .focusRequester(focusRequester),
-            label = { Text("New name", fontWeight = FontWeight.Medium) },
+            label = { Text("新名称", fontWeight = FontWeight.Medium) },
             singleLine = false,
             maxLines = 5,
             isError = isError.value,
@@ -131,7 +131,7 @@ fun RenameDialog(
         shape = MaterialTheme.shapes.extraLarge,
       ) {
         Text(
-          text = "Rename",
+          text = "重命名",
           fontWeight = FontWeight.Bold,
         )
       }
@@ -141,7 +141,7 @@ fun RenameDialog(
         onClick = onDismiss,
         shape = MaterialTheme.shapes.extraLarge,
       ) {
-        Text("Cancel", fontWeight = FontWeight.Medium)
+        Text("取消", fontWeight = FontWeight.Medium)
       }
     },
     containerColor = MaterialTheme.colorScheme.surface,

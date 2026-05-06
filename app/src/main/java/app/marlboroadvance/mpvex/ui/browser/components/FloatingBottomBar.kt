@@ -77,7 +77,7 @@ fun BrowserBottomBar(
         ) {
           Icon(
             Icons.Filled.ContentCopy, 
-            contentDescription = "Copy",
+            contentDescription = "复制",
             modifier = Modifier.size(24.dp)
           )
         }
@@ -93,7 +93,7 @@ fun BrowserBottomBar(
         ) {
           Icon(
             Icons.AutoMirrored.Filled.DriveFileMove, 
-            contentDescription = "Move",
+            contentDescription = "移动",
             modifier = Modifier.size(24.dp)
           )
         }
@@ -109,7 +109,7 @@ fun BrowserBottomBar(
         ) {
           Icon(
             Icons.Filled.DriveFileRenameOutline, 
-            contentDescription = "Rename",
+            contentDescription = "重命名",
             modifier = Modifier.size(24.dp)
           )
         }
@@ -122,7 +122,7 @@ fun BrowserBottomBar(
         ) {
           Icon(
             Icons.AutoMirrored.Filled.PlaylistAdd, 
-            contentDescription = "Add to Playlist",
+            contentDescription = "添加到播放列表",
             modifier = Modifier.size(24.dp)
           )
         }
@@ -138,7 +138,7 @@ fun BrowserBottomBar(
         ) {
           Icon(
             Icons.Filled.Delete, 
-            contentDescription = "Delete",
+            contentDescription = "删除",
             modifier = Modifier.size(24.dp)
           )
         }

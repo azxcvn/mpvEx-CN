@@ -186,7 +186,7 @@ object LuaScriptsScreen : Screen {
         TopAppBar(
           title = {
             Text(
-              text = "Lua Scripts",
+              text = "Lua 脚本",
               style = MaterialTheme.typography.headlineSmall,
               fontWeight = FontWeight.ExtraBold,
               color = MaterialTheme.colorScheme.primary,
@@ -196,7 +196,7 @@ object LuaScriptsScreen : Screen {
             IconButton(onClick = backStack::removeLastOrNull) {
               Icon(
                 Icons.AutoMirrored.Default.ArrowBack,
-                contentDescription = "Back",
+                contentDescription = "返回",
                 tint = MaterialTheme.colorScheme.secondary,
               )
             }
@@ -212,7 +212,7 @@ object LuaScriptsScreen : Screen {
         ) {
           Icon(
             Icons.Default.Add,
-            contentDescription = "Create new script",
+            contentDescription = "创建新脚本",
             tint = MaterialTheme.colorScheme.onPrimary,
           )
         }
@@ -260,7 +260,7 @@ object LuaScriptsScreen : Screen {
                 ) {
                   Icon(
                     Icons.Default.Share,
-                    contentDescription = "Share",
+                    contentDescription = "分享",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                   )
                 }
@@ -271,7 +271,7 @@ object LuaScriptsScreen : Screen {
                 ) {
                   Icon(
                     Icons.Default.Edit,
-                    contentDescription = "Edit",
+                    contentDescription = "编辑",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                   )
                 }

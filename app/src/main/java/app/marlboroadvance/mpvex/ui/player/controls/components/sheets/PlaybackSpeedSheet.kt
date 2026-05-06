@@ -223,7 +223,7 @@ fun PlaybackSpeedSheet(
                         modifier = buttonModifier
                     ) {
                        Icon(Icons.Default.Remove, null, modifier = Modifier.size(16.dp).padding(end = 4.dp))
-                       Text("Remove")
+                       Text("移除")
                     }
                 }
             } else {
@@ -233,7 +233,7 @@ fun PlaybackSpeedSheet(
                     modifier = buttonModifier
                 ) {
                   Icon(Icons.Default.Add, null, modifier = Modifier.size(16.dp).padding(end = 4.dp))
-                  Text("Add")
+                  Text("添加")
                 }
             }
       }

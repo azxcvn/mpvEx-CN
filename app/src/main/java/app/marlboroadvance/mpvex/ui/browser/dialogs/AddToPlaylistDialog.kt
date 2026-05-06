@@ -82,9 +82,9 @@ fun AddToPlaylistDialog(
           }
           repository.addItemsToPlaylist(playlistId.toInt(), items)
           val message = if (videos.size == 1) {
-            "Video added to \"$name\""
+            "视频已添加到「$name」"
           } else {
-            "${videos.size} videos added to \"$name\""
+            "${videos.size} 个视频已添加到「$name」"
           }
           Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
           showCreateDialog = false
@@ -100,7 +100,7 @@ fun AddToPlaylistDialog(
     onDismissRequest = onDismiss,
     title = {
       Text(
-        text = "Add to Playlist",
+        text = "添加到播放列表",
         style = MaterialTheme.typography.headlineMedium,
         fontWeight = FontWeight.Bold,
       )
@@ -113,9 +113,9 @@ fun AddToPlaylistDialog(
         // Show video count
         Text(
           text = if (videos.size == 1) {
-            "Adding 1 video to playlist"
+            "正在添加 1 个视频到播放列表"
           } else {
-            "Adding ${videos.size} videos to playlist"
+            "正在添加 ${videos.size} 个视频到播放列表"
           },
           style = MaterialTheme.typography.bodyMedium,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -134,7 +134,7 @@ fun AddToPlaylistDialog(
           )
           Spacer(modifier = Modifier.width(8.dp))
           Text(
-            text = "Create New Playlist",
+            text = "创建新播放列表",
             fontWeight = FontWeight.Medium,
           )
         }
@@ -142,7 +142,7 @@ fun AddToPlaylistDialog(
         // Existing playlists
         if (playlists.isNotEmpty()) {
           Text(
-            text = "Existing Playlists",
+            text = "已有播放列表",
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,
@@ -164,9 +164,9 @@ fun AddToPlaylistDialog(
                     }
                     repository.addItemsToPlaylist(playlist.id, items)
                     val message = if (videos.size == 1) {
-                      "Video added to \"${playlist.name}\""
+                      "视频已添加到「${playlist.name}」"
                     } else {
-                      "${videos.size} videos added to \"${playlist.name}\""
+                      "${videos.size} 个视频已添加到「${playlist.name}」"
                     }
                     Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                   }
@@ -191,7 +191,7 @@ fun AddToPlaylistDialog(
         ),
         shape = MaterialTheme.shapes.extraLarge,
       ) {
-        Text("Done", fontWeight = FontWeight.Bold)
+        Text("完成", fontWeight = FontWeight.Bold)
       }
     },
     dismissButton = {
@@ -199,7 +199,7 @@ fun AddToPlaylistDialog(
         onClick = onDismiss,
         shape = MaterialTheme.shapes.extraLarge,
       ) {
-        Text("Cancel", fontWeight = FontWeight.Medium)
+        Text("取消", fontWeight = FontWeight.Medium)
       }
     },
     containerColor = MaterialTheme.colorScheme.surface,
@@ -251,7 +251,7 @@ private fun PlaylistItemCard(
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-          text = "$itemCount videos • ${formatDate(playlist.updatedAt)}",
+          text = "$itemCount 个视频 • ${formatDate(playlist.updatedAt)}",
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -283,13 +283,13 @@ private fun EmptyPlaylistsMessage() {
         tint = MaterialTheme.colorScheme.onSurfaceVariant,
       )
       Text(
-        text = "No playlists yet",
+        text = "暂无播放列表",
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
       Text(
-        text = "Create your first playlist above",
+        text = "请在上方创建您的第一个播放列表",
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
@@ -308,7 +308,7 @@ private fun CreatePlaylistDialog(
     onDismissRequest = onDismiss,
     title = {
       Text(
-        text = "Create New Playlist",
+        text = "创建新播放列表",
         style = MaterialTheme.typography.headlineSmall,
         fontWeight = FontWeight.Bold,
       )
@@ -317,7 +317,7 @@ private fun CreatePlaylistDialog(
       OutlinedTextField(
         value = playlistName,
         onValueChange = { playlistName = it },
-        label = { Text("Playlist Name") },
+        label = { Text("播放列表名称") },
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
@@ -333,7 +333,7 @@ private fun CreatePlaylistDialog(
         enabled = playlistName.isNotBlank(),
         shape = MaterialTheme.shapes.extraLarge,
       ) {
-        Text("Create", fontWeight = FontWeight.Bold)
+        Text("创建", fontWeight = FontWeight.Bold)
       }
     },
     dismissButton = {
@@ -341,7 +341,7 @@ private fun CreatePlaylistDialog(
         onClick = onDismiss,
         shape = MaterialTheme.shapes.extraLarge,
       ) {
-        Text("Cancel", fontWeight = FontWeight.Medium)
+        Text("取消", fontWeight = FontWeight.Medium)
       }
     },
     containerColor = MaterialTheme.colorScheme.surface,
@@ -351,6 +351,6 @@ private fun CreatePlaylistDialog(
 }
 
 private fun formatDate(timestamp: Long): String {
-  val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+  val sdf = SimpleDateFormat("yyyy年MM月dd日", Locale.getDefault())
   return sdf.format(Date(timestamp))
 }

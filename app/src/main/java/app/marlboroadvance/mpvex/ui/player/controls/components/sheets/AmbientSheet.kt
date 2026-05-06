@@ -91,7 +91,7 @@ fun AmbientSheet(
 
             // ── Title ────────────────────────────────────────────────────────
             Text(
-                text = "Ambience Mode",
+                text = "氛围模式",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
@@ -117,7 +117,7 @@ fun AmbientSheet(
                         contentColor = MaterialTheme.colorScheme.onPrimary,
                     ) else ButtonDefaults.filledTonalButtonColors(),
                 ) {
-                    Text("Fast", fontWeight = FontWeight.Bold)
+                    Text("快速", fontWeight = FontWeight.Bold)
                 }
                 FilledTonalButton(
                     onClick = { viewModel.applyAmbientProfileBalanced() },
@@ -127,7 +127,7 @@ fun AmbientSheet(
                         contentColor = MaterialTheme.colorScheme.onPrimary,
                     ) else ButtonDefaults.filledTonalButtonColors(),
                 ) {
-                    Text("Balanced", fontWeight = FontWeight.Bold)
+                    Text("均衡", fontWeight = FontWeight.Bold)
                 }
                 FilledTonalButton(
                     onClick = { viewModel.applyAmbientProfileHighQuality() },
@@ -137,7 +137,7 @@ fun AmbientSheet(
                         contentColor = MaterialTheme.colorScheme.onPrimary,
                     ) else ButtonDefaults.filledTonalButtonColors(),
                 ) {
-                    Text("HQ", fontWeight = FontWeight.Bold)
+                    Text("高质量", fontWeight = FontWeight.Bold)
                 }
             }
 

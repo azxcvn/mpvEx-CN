@@ -95,7 +95,7 @@ fun NetworkVideoCard(
         // Play icon overlay
         Icon(
           Icons.Filled.PlayArrow,
-          contentDescription = "Play",
+          contentDescription = "播放",
           modifier = Modifier.size(48.dp),
           tint = MaterialTheme.colorScheme.secondary,
         )

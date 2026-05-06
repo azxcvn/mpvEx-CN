@@ -356,7 +356,7 @@ fun PermissionDeniedState(
           )
 
           Text(
-            text = "Be rest assured, your privacy is our utmost priority, and we neither access your files for other purposes nor transfer or store them to our servers. They remain safe on your device.",
+            text = "请放心，您的隐私是我们的首要关注点。我们不会将您的文件用于其他目的，也不会将其传输或存储到我们的服务器。您的文件安全地保存在您的设备上。",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = FontWeight.Medium,

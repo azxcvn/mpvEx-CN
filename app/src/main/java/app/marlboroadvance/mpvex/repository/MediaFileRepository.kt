@@ -382,7 +382,7 @@ object MediaFileRepository {
           
           roots.add(
             FileSystemItem.Folder(
-              name = "Internal Storage",
+              name = "内部存储",
               path = primaryPath,
               lastModified = primaryStorage.lastModified(),
               videoCount = folderData?.videoCount ?: 0,

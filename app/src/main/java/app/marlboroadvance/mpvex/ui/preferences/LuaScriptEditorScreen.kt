@@ -301,7 +301,7 @@ data class LuaScriptEditorScreen(
                 Box {
                   if (fileName.isEmpty()) {
                     Text(
-                      text = "Script name",
+                      text = "脚本名称",
                       style = MaterialTheme.typography.headlineSmall.copy(
                         fontWeight = FontWeight.ExtraBold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
@@ -314,7 +314,7 @@ data class LuaScriptEditorScreen(
             )
             if (hasUnsavedChanges) {
               Text(
-                text = "Unsaved changes",
+                text = "未保存的更改",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.secondary,
               )
@@ -325,7 +325,7 @@ data class LuaScriptEditorScreen(
           IconButton(onClick = backStack::removeLastOrNull) {
             Icon(
               Icons.AutoMirrored.Default.ArrowBack,
-              contentDescription = "Back",
+              contentDescription = "返回",
               tint = MaterialTheme.colorScheme.secondary,
             )
           }
@@ -346,7 +346,7 @@ data class LuaScriptEditorScreen(
             ) {
               Icon(
                 Icons.Default.Share,
-                contentDescription = "Share",
+                contentDescription = "分享",
               )
             }
           }
@@ -366,7 +366,7 @@ data class LuaScriptEditorScreen(
             ) {
               Icon(
                 Icons.Default.Delete,
-                contentDescription = "Delete",
+                contentDescription = "删除",
               )
             }
           }
@@ -396,7 +396,7 @@ data class LuaScriptEditorScreen(
           ) {
             Icon(
               Icons.Default.Check,
-              contentDescription = "Save",
+              contentDescription = "保存",
             )
           }
         },

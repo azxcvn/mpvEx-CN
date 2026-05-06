@@ -272,13 +272,13 @@ object AboutScreen : Screen {
                 ) {
                   Icon(
                     imageVector = Icons.Filled.Info,
-                    contentDescription = "Device Info",
+                    contentDescription = "设备信息",
                     modifier = Modifier.size(20.dp),
                     tint = cs.onPrimaryContainer,
                   )
                   Spacer(modifier = Modifier.width(8.dp))
                   Text(
-                    text = "Device Info",
+                    text = "设备信息",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = cs.onPrimaryContainer,
@@ -313,7 +313,7 @@ object AboutScreen : Screen {
                     ) {
                          Icon(Icons.Default.Update, null, modifier = Modifier.size(18.dp))
                          Spacer(Modifier.width(8.dp))
-                         Text("Check for Updates Now", fontWeight = FontWeight.SemiBold)
+                         Text("立即检查更新", fontWeight = FontWeight.SemiBold)
                     }
                 }
           }

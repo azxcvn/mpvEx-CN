@@ -141,7 +141,7 @@ object SettingsSearchScreen : Screen {
                             IconButton(onClick = { searchQuery = "" }) {
                                 Icon(
                                     imageVector = Icons.Outlined.Clear,
-                                    contentDescription = "Clear",
+                                    contentDescription = "清除",
                                     tint = MaterialTheme.colorScheme.outline,
                                 )
                             }

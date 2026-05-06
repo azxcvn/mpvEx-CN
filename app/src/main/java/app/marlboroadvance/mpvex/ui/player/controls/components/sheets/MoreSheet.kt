@@ -220,7 +220,7 @@ if (infoDialogData != null) {
         
         if (isHighRes) {
             Text(
-                text = "Not available for 4K/8K video",
+                text = "4K/8K 视频不可用",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(bottom = 4.dp)
@@ -456,7 +456,7 @@ fun SectionHeaderWithInfo(
     IconButton(onClick = onInfoClick, modifier = Modifier.size(24.dp)) {
       Icon(
         imageVector = Icons.Outlined.Info,
-        contentDescription = "Info",
+        contentDescription = "信息",
         tint = MaterialTheme.colorScheme.primary,
         modifier = Modifier.size(16.dp)
       )

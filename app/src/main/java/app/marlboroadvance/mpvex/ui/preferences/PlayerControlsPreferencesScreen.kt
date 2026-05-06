@@ -355,7 +355,7 @@ object PlayerControlsPreferencesScreen : Screen {
       IconButton(onClick = onClick) {
         Icon(
           imageVector = Icons.Outlined.Edit,
-          contentDescription = "Edit $title",
+          contentDescription = "编辑$title",
           tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
       }

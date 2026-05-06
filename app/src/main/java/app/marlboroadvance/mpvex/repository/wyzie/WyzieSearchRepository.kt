@@ -40,7 +40,7 @@ data class WyzieSubtitle(
     val matchedFilter: String? = null,
     val downloadCount: Int? = null
 ) {
-    val displayName: String get() = fileName ?: release ?: media ?: "Unknown Subtitle"
+    val displayName: String get() = fileName ?: release ?: media ?: "未知字幕"
     val displayLanguage: String get() = display ?: language ?: "Unknown"
 }
 

@@ -123,7 +123,7 @@ object CopyPasteOps {
       try {
         // Validate inputs
         if (videos.isEmpty()) {
-          return@withContext Result.failure(IllegalArgumentException("No files to copy"))
+          return@withContext Result.failure(IllegalArgumentException("没有要复制的文件"))
         }
 
         val copiedFilePaths =
@@ -134,7 +134,7 @@ object CopyPasteOps {
             val destDir =
               prepareDestinationDirectory(destinationPath)
                 ?: return@withContext Result.failure(
-                  IOException("Failed to create destination directory: $destinationPath"),
+                  IOException("创建目标目录失败: $destinationPath"),
                 )
 
             // Filter valid source files
@@ -154,7 +154,7 @@ object CopyPasteOps {
 
             if (validVideos.isEmpty()) {
               return@withContext Result.failure(
-                IllegalArgumentException("No valid files to copy"),
+                IllegalArgumentException("没有有效的文件可复制"),
               )
             }
 
@@ -162,7 +162,7 @@ object CopyPasteOps {
             val totalBytes = validVideos.sumOf { it.size }
             if (!hasEnoughDiskSpace(destDir, totalBytes)) {
               return@withContext Result.failure(
-                IOException("Not enough disk space. Required: ${formatBytes(totalBytes)}"),
+                IOException("磁盘空间不足。需要: ${formatBytes(totalBytes)}"),
               )
             }
 
@@ -201,7 +201,7 @@ object CopyPasteOps {
       try {
         // Validate inputs
         if (videos.isEmpty()) {
-          return@withContext Result.failure(IllegalArgumentException("No files to move"))
+          return@withContext Result.failure(IllegalArgumentException("没有要移动的文件"))
         }
 
         val movedFilePaths =
@@ -212,7 +212,7 @@ object CopyPasteOps {
             val destDir =
               prepareDestinationDirectory(destinationPath)
                 ?: return@withContext Result.failure(
-                  IOException("Failed to create destination directory: $destinationPath"),
+                  IOException("创建目标目录失败: $destinationPath"),
                 )
 
             // Filter valid source files
@@ -232,7 +232,7 @@ object CopyPasteOps {
 
             if (validVideos.isEmpty()) {
               return@withContext Result.failure(
-                IllegalArgumentException("No valid files to move"),
+                IllegalArgumentException("没有有效的文件可移动"),
               )
             }
 
@@ -277,7 +277,7 @@ object CopyPasteOps {
     withContext(Dispatchers.IO) {
       try {
         if (videos.isEmpty()) {
-          return@withContext Result.failure(IllegalArgumentException("No files to copy"))
+          return@withContext Result.failure(IllegalArgumentException("没有要复制的文件"))
         }
 
         resetOperation()
@@ -289,7 +289,7 @@ object CopyPasteOps {
         Log.e(TAG, "Copy (tree) failed: ${e.message}", e)
         _operationProgress.value =
           _operationProgress.value.copy(
-            error = e.message ?: "Unknown error occurred",
+            error = e.message ?: "发生未知错误",
           )
         Result.failure(e)
       }
@@ -306,7 +306,7 @@ object CopyPasteOps {
     withContext(Dispatchers.IO) {
       try {
         if (videos.isEmpty()) {
-          return@withContext Result.failure(IllegalArgumentException("No files to move"))
+          return@withContext Result.failure(IllegalArgumentException("没有要移动的文件"))
         }
 
         resetOperation()
@@ -316,7 +316,7 @@ object CopyPasteOps {
         checkCancellation()
         val (deleted, failed) = PermissionUtils.StorageOps.deleteVideos(context, videos)
         if (deleted != videos.size || failed > 0) {
-          throw IOException("Failed to delete source files after move: deleted=$deleted, failed=$failed")
+          throw IOException("移动后删除源文件失败: 已删除=$deleted, 失败=$failed")
         }
 
         val historyUpdates = mutableListOf<Pair<String, String>>()
@@ -337,7 +337,7 @@ object CopyPasteOps {
         Log.e(TAG, "Move (tree) failed: ${e.message}", e)
         _operationProgress.value =
           _operationProgress.value.copy(
-            error = e.message ?: "Unknown error occurred",
+            error = e.message ?: "发生未知错误",
           )
         Result.failure(e)
       }

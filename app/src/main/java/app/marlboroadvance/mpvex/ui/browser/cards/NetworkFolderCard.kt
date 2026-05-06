@@ -77,7 +77,7 @@ fun NetworkFolderCard(
       ) {
         Icon(
           Icons.Filled.Folder,
-          contentDescription = "Folder",
+          contentDescription = "文件夹",
           modifier = Modifier.size(48.dp),
           tint = MaterialTheme.colorScheme.secondary,
         )

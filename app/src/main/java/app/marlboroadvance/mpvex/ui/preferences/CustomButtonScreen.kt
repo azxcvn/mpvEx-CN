@@ -228,13 +228,13 @@ object CustomButtonScreen : Screen {
                     title = {
                         Column {
                             Text(
-                                text = "Custom Buttons",
+                                text = "自定义按钮",
                                 style = MaterialTheme.typography.headlineSmall,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = MaterialTheme.colorScheme.primary,
                             )
                             Text(
-                                text = "Drag to reorder • Tap any slot to expand & edit",
+                                text = "拖动排序 · 点击任意槽位展开编辑",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -244,7 +244,7 @@ object CustomButtonScreen : Screen {
                         IconButton(onClick = backstack::removeLastOrNull) {
                             Icon(
                                 Icons.AutoMirrored.Outlined.ArrowBack,
-                                contentDescription = "Back",
+                                contentDescription = "返回",
                                 tint = MaterialTheme.colorScheme.secondary,
                             )
                         }
@@ -288,7 +288,7 @@ object CustomButtonScreen : Screen {
                             dragHandle = { interceptModifier ->
                                 Icon(
                                     Icons.Default.DragHandle,
-                                    contentDescription = "Drag to reorder",
+                                    contentDescription = "拖动排序",
                                     modifier = interceptModifier
                                         .draggableHandle()
                                         .padding(horizontal = 8.dp, vertical = 12.dp),
@@ -325,14 +325,14 @@ object CustomButtonScreen : Screen {
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             Text(
-                                text = "Import / Export",
+                                text = "导入 / 导出",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface,
                             )
                             
                             Text(
-                                text = "Backup or share all your custom buttons with their Lua code as an XML file",
+                                text = "备份或分享所有自定义按钮及其 Lua 代码为 XML 文件",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -520,7 +520,7 @@ fun ButtonSlotCard(
                             contentColor   = MaterialTheme.colorScheme.onErrorContainer,
                         ),
                     ) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Delete, contentDescription = "删除", modifier = Modifier.size(18.dp))
                     }
                     Spacer(Modifier.width(4.dp))
                 }
@@ -541,7 +541,7 @@ fun ButtonSlotCard(
                     // Disabled drag handle for empty slots
                     Icon(
                         Icons.Default.DragHandle,
-                        contentDescription = "Drag disabled",
+                        contentDescription = "拖动已禁用",
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f),
                     )
@@ -640,14 +640,14 @@ fun ButtonSlotCard(
                         },
                         navigationIcon = {
                             IconButton(onClick = { dismissAndSave() }) {
-                                Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back")
+                                Icon(Icons.AutoMirrored.Outlined.ArrowBack, "返回")
                             }
                         },
                         actions = {
                             IconButton(onClick = { dismissAndSave() }) {
                                 Icon(
                                     Icons.Default.Check,
-                                    contentDescription = "Done",
+                                    contentDescription = "完成",
                                     tint = MaterialTheme.colorScheme.primary,
                                 )
                             }
@@ -893,7 +893,7 @@ fun LuaEditorEntryCard(
                     )
                 } else {
                     Text(
-                        text = "Tap to write Lua code…",
+                        text = "点击编写 Lua 代码…",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                     )
@@ -931,13 +931,13 @@ fun ImportSelectionScreen(
                 title = {
                     Column {
                         Text(
-                            text = "Select Buttons to Import",
+                            text = "选择要导入的按钮",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary,
                         )
                         Text(
-                            text = "Choose which buttons to import",
+                            text = "选择要导入哪些按钮",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -947,7 +947,7 @@ fun ImportSelectionScreen(
                     IconButton(onClick = onDismiss) {
                         Icon(
                             Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = "Cancel",
+                            contentDescription = "取消",
                             tint = MaterialTheme.colorScheme.secondary,
                         )
                     }
@@ -967,7 +967,7 @@ fun ImportSelectionScreen(
                     ) {
                         Icon(
                             Icons.Default.FileDownload,
-                            contentDescription = "Import",
+                            contentDescription = "导入",
                         )
                     }
                 },
@@ -1078,7 +1078,7 @@ fun ImportSelectionScreen(
                                     )
                                     Spacer(Modifier.width(4.dp))
                                     Text(
-                                        text = "Will overwrite existing button",
+                                        text = "将覆盖已有按钮",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.error,
                                     )

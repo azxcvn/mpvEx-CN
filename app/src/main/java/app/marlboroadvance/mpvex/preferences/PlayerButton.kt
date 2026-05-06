@@ -77,28 +77,28 @@ val allPlayerButtons =
 @Composable
 fun getPlayerButtonLabel(button: PlayerButton): String =
   when (button) {
-    PlayerButton.BACK_ARROW -> "Back Arrow" // stringResource(R.string.btn_label_back)
-    PlayerButton.VIDEO_TITLE -> "Video Title" // stringResource(R.string.btn_label_title)
-    PlayerButton.BOOKMARKS_CHAPTERS -> "Chapters / Bookmarks" // stringResource(R.string.btn_label_bookmarks)
-    PlayerButton.PLAYBACK_SPEED -> "Playback Speed" // stringResource(R.string.btn_label_speed)
-    PlayerButton.DECODER -> "Decoder" // stringResource(R.string.btn_label_decoder)
-    PlayerButton.SCREEN_ROTATION -> "Screen Rotation" // stringResource(R.string.btn_label_rotation)
-    PlayerButton.FRAME_NAVIGATION -> "Frame Navigation" // stringResource(R.string.btn_label_frame_nav)
-    PlayerButton.VIDEO_ZOOM -> "Video Zoom" // stringResource(R.string.btn_label_zoom)
-    PlayerButton.PICTURE_IN_PICTURE -> "Picture-in-Picture" // stringResource(R.string.btn_label_pip)
-    PlayerButton.ASPECT_RATIO -> "Aspect Ratio" // stringResource(R.string.btn_label_aspect)
-    PlayerButton.LOCK_CONTROLS -> "Lock Controls" // stringResource(R.string.btn_label_lock)
-    PlayerButton.AUDIO_TRACK -> "Audio Track" // stringResource(R.string.btn_label_audio)
-    PlayerButton.SUBTITLES -> "Subtitles" // stringResource(R.string.btn_label_subtitles)
-    PlayerButton.MORE_OPTIONS -> "More Options" // stringResource(R.string.btn_label_more)
-    PlayerButton.CURRENT_CHAPTER -> "Current Chapter" // stringResource(R.string.btn_label_chapter)
-    PlayerButton.REPEAT_MODE -> "Repeat Mode" // stringResource(R.string.btn_label_repeat_mode)
-    PlayerButton.SHUFFLE -> "Shuffle" // stringResource(R.string.btn_label_shuffle)
-    PlayerButton.MIRROR -> "Horizontal Flip"
-    PlayerButton.VERTICAL_FLIP -> "Vertical Flip"
-    PlayerButton.AB_LOOP -> "A-B Loop"
-    PlayerButton.CUSTOM_SKIP -> "Custom Skip"
-    PlayerButton.BACKGROUND_PLAYBACK -> "Background Playback"
-    PlayerButton.AMBIENT_MODE -> "Ambience Mode"
-    PlayerButton.NONE -> "None"
+    PlayerButton.BACK_ARROW -> "返回按钮"
+    PlayerButton.VIDEO_TITLE -> "视频标题"
+    PlayerButton.BOOKMARKS_CHAPTERS -> "章节 / 书签"
+    PlayerButton.PLAYBACK_SPEED -> "播放速度"
+    PlayerButton.DECODER -> "解码器"
+    PlayerButton.SCREEN_ROTATION -> "屏幕旋转"
+    PlayerButton.FRAME_NAVIGATION -> "帧导航"
+    PlayerButton.VIDEO_ZOOM -> "视频缩放"
+    PlayerButton.PICTURE_IN_PICTURE -> "画中画"
+    PlayerButton.ASPECT_RATIO -> "画面比例"
+    PlayerButton.LOCK_CONTROLS -> "锁定控件"
+    PlayerButton.AUDIO_TRACK -> "音轨"
+    PlayerButton.SUBTITLES -> "字幕"
+    PlayerButton.MORE_OPTIONS -> "更多选项"
+    PlayerButton.CURRENT_CHAPTER -> "当前章节"
+    PlayerButton.REPEAT_MODE -> "循环模式"
+    PlayerButton.SHUFFLE -> "随机播放"
+    PlayerButton.MIRROR -> "水平翻转"
+    PlayerButton.VERTICAL_FLIP -> "垂直翻转"
+    PlayerButton.AB_LOOP -> "A-B 循环"
+    PlayerButton.CUSTOM_SKIP -> "自定义跳转"
+    PlayerButton.BACKGROUND_PLAYBACK -> "后台播放"
+    PlayerButton.AMBIENT_MODE -> "氛围模式"
+    PlayerButton.NONE -> "无"
   }

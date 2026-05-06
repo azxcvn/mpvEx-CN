@@ -336,7 +336,7 @@ fun PlaylistSheet(
           ) {
             if (currentItem != null) {
               Text(
-                text = "Now Playing",
+                text = "正在播放",
                 style = MaterialTheme.typography.titleSmall.copy(
                   fontWeight = FontWeight.Bold,
                   color = accentColor,
@@ -491,7 +491,7 @@ fun PlaylistTrackListItem(
         thumbnail?.let { bmp ->
           Image(
             bitmap = bmp.asImageBitmap(),
-            contentDescription = "Thumbnail",
+            contentDescription = "缩略图",
             modifier = Modifier.matchParentSize(),
             contentScale = ContentScale.Crop,
           )
@@ -681,7 +681,7 @@ fun PlaylistTrackGridItem(
         thumbnail?.let { bmp ->
           Image(
             bitmap = bmp.asImageBitmap(),
-            contentDescription = "Thumbnail",
+            contentDescription = "缩略图",
             modifier = Modifier.matchParentSize(),
             contentScale = ContentScale.Crop,
           )
