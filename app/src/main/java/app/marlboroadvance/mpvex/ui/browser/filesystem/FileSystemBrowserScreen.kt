@@ -544,7 +544,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
             title = if (isAtRoot) {
               stringResource(app.marlboroadvance.mpvex.R.string.app_name)
             } else {
-              breadcrumbs.lastOrNull()?.name ?: "Tree View"
+              breadcrumbs.lastOrNull()?.name ?: "树形视图"
             },
             isInSelectionMode = isInSelectionMode,
             selectedCount = selectedCount,
@@ -1223,7 +1223,7 @@ private fun FileSystemBrowserContent(
       ) {
         EmptyState(
           icon = Icons.Filled.Folder,
-          title = "Error loading directory",
+          title = "加载目录出错",
           message = error,
         )
       }
@@ -1236,8 +1236,8 @@ private fun FileSystemBrowserContent(
       ) {
         EmptyState(
           icon = Icons.Filled.FolderOpen,
-          title = "Empty folder",
-          message = "This folder contains no videos or subfolders",
+          title = "空文件夹",
+          message = "此文件夹不包含视频或子文件夹",
         )
       }
     }
@@ -1430,7 +1430,7 @@ private fun FileSystemSearchContent(
               color = MaterialTheme.colorScheme.primary,
             )
             Text(
-              text = if (isAtRoot) "Searching all storage volumes..." else "Searching...",
+              text = if (isAtRoot) "正在搜索所有存储卷..." else "正在搜索...",
               style = MaterialTheme.typography.bodyMedium,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -1445,8 +1445,8 @@ private fun FileSystemSearchContent(
         ) {
           EmptyState(
             icon = Icons.Filled.Search,
-            title = "No results found",
-            message = "No files or folders match \"$searchQuery\"",
+            title = "未找到结果",
+            message = "没有文件或文件夹匹配 \"$searchQuery\"",
           )
         }
       }
@@ -1565,7 +1565,7 @@ fun FileSystemSortDialog(
   SortDialog(
     isOpen = isOpen,
     onDismiss = onDismiss,
-    title = "Sort & View Options",
+    title = "排序和视图选项",
     sortType = folderSortType.displayName,
     onSortTypeChange = { typeName ->
       app.marlboroadvance.mpvex.preferences.FolderSortType.entries.find { it.displayName == typeName }?.let {
@@ -1591,17 +1591,17 @@ fun FileSystemSortDialog(
     ),
     getLabelForType = { type, _ ->
       when (type) {
-        app.marlboroadvance.mpvex.preferences.FolderSortType.Title.displayName -> Pair("A-Z", "Z-A")
-        app.marlboroadvance.mpvex.preferences.FolderSortType.Date.displayName -> Pair("Oldest", "Newest")
-        app.marlboroadvance.mpvex.preferences.FolderSortType.Size.displayName -> Pair("Smallest", "Largest")
-        else -> Pair("Asc", "Desc")
+        app.marlboroadvance.mpvex.preferences.FolderSortType.Title.displayName -> Pair("升序", "降序")
+        app.marlboroadvance.mpvex.preferences.FolderSortType.Date.displayName -> Pair("最旧", "最新")
+        app.marlboroadvance.mpvex.preferences.FolderSortType.Size.displayName -> Pair("最小", "最大")
+        else -> Pair("升序", "降序")
       }
     },
     showSortOptions = true,
     viewModeSelector = ViewModeSelector(
-      label = "View Mode",
-      firstOptionLabel = "Folder",
-      secondOptionLabel = "Tree",
+      label = "查看模式",
+      firstOptionLabel = "文件夹",
+      secondOptionLabel = "树形",
       firstOptionIcon = Icons.Filled.ViewModule,
       secondOptionIcon = Icons.Filled.AccountTree,
       isFirstOptionSelected = folderViewMode == app.marlboroadvance.mpvex.preferences.FolderViewMode.AlbumView,
@@ -1616,9 +1616,9 @@ fun FileSystemSortDialog(
       },
     ),
     layoutModeSelector = ViewModeSelector(
-      label = "Layout",
-      firstOptionLabel = "List",
-      secondOptionLabel = "Grid",
+      label = "布局",
+      firstOptionLabel = "列表",
+      secondOptionLabel = "网格",
       firstOptionIcon = Icons.AutoMirrored.Filled.ViewList,
       secondOptionIcon = Icons.Filled.GridView,
       isFirstOptionSelected = true, // Always list mode
@@ -1630,52 +1630,52 @@ fun FileSystemSortDialog(
     enableLayoutModeOptions = false, // Disabled/grayed out
     visibilityToggles = listOf(
       VisibilityToggle(
-        label = "Video Thumbnails",
+        label = "视频缩略图",
         checked = showVideoThumbnails,
         onCheckedChange = { browserPreferences.showVideoThumbnails.set(it) },
       ),
       VisibilityToggle(
-        label = "Full Name",
+        label = "完整名称",
         checked = unlimitedNameLines,
         onCheckedChange = { appearancePreferences.unlimitedNameLines.set(it) },
       ),
       VisibilityToggle(
-        label = "Path",
+        label = "路径",
         checked = showFolderPath,
         onCheckedChange = { browserPreferences.showFolderPath.set(it) },
       ),
       VisibilityToggle(
-        label = "Total Videos",
+        label = "视频总数",
         checked = showTotalVideosChip,
         onCheckedChange = { browserPreferences.showTotalVideosChip.set(it) },
       ),
       VisibilityToggle(
-        label = "Folder Size",
+        label = "文件夹大小",
         checked = showTotalSizeChip,
         onCheckedChange = { browserPreferences.showTotalSizeChip.set(it) },
       ),
       VisibilityToggle(
-        label = "Size",
+        label = "大小",
         checked = showSizeChip,
         onCheckedChange = { browserPreferences.showSizeChip.set(it) },
       ),
       VisibilityToggle(
-        label = "Resolution",
+        label = "分辨率",
         checked = showResolutionChip,
         onCheckedChange = { browserPreferences.showResolutionChip.set(it) },
       ),
       VisibilityToggle(
-        label = "Framerate",
+        label = "帧率",
         checked = showFramerateInResolution,
         onCheckedChange = { browserPreferences.showFramerateInResolution.set(it) },
       ),
       VisibilityToggle(
-        label = "Subtitle",
+        label = "字幕",
         checked = showSubtitleIndicator,
         onCheckedChange = { browserPreferences.showSubtitleIndicator.set(it) },
       ),
       VisibilityToggle(
-        label = "Progress Bar",
+        label = "进度条",
         checked = showProgressBar,
         onCheckedChange = { browserPreferences.showProgressBar.set(it) },
       ),

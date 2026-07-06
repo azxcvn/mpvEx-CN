@@ -166,6 +166,7 @@ object FolderListScreen : Screen {
     val foldersWereDeleted by viewModel.foldersWereDeleted.collectAsState()
 
     // Preferences
+    val folderViewMode by browserPreferences.folderViewMode.collectAsState()
     val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
     val folderGridColumnsPortrait by browserPreferences.folderGridColumnsPortrait.collectAsState()
   val folderGridColumnsLandscape by browserPreferences.folderGridColumnsLandscape.collectAsState()
@@ -352,6 +353,12 @@ object FolderListScreen : Screen {
             onCancelSelection = { selectionManager.clear() },
             onSortClick = { sortDialogOpen.value = true },
             onSearchClick = { isSearching = !isSearching },
+            onViewModeToggle = {
+              browserPreferences.folderViewMode.set(
+                if (folderViewMode == FolderViewMode.AlbumView) FolderViewMode.FileManager
+                else FolderViewMode.AlbumView
+              )
+            },
             onSettingsClick = {
               backstack.add(app.marlboroadvance.mpvex.ui.preferences.PreferencesScreen)
             },

@@ -115,8 +115,8 @@ enum class FolderViewMode {
   val displayName: String
     get() =
       when (this) {
-        AlbumView -> "Folder View"
-        FileManager -> "Tree View"
+        AlbumView -> "文件夹视图"
+        FileManager -> "树形视图"
       }
 }
 
@@ -127,7 +127,7 @@ enum class MediaLayoutMode {
 
   val displayName:  String
     get() = when (this) {
-      LIST -> "List"
-      GRID -> "Grid"
+      LIST -> "列表"
+      GRID -> "网格"
     }
 }

@@ -17,8 +17,8 @@ android {
     applicationId = "app.marlboroadvance.mpvex"
     minSdk = 26
     targetSdk = 36
-    versionCode = 129
-    versionName = "1.2.9"
+    versionCode = 130
+    versionName = "1.3.0"
 
     vectorDrawables {
       useSupportLibrary = true
@@ -61,7 +61,7 @@ android {
     abi {
       isEnable = true
       reset()
-      include("arm64-v8a")
+      include("arm64-v8a", "armeabi-v7a")
       isUniversalApk = false
     }
   }
