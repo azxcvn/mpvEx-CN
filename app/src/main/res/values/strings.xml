@@ -391,7 +391,7 @@
 
     <string name="value_percentage_int" translatable="false">%d%%</string>
 
-    <string name="github_repo_url" translatable="false">https://github.com/marlboro-advance/mpvex</string>
+    <string name="github_repo_url" translatable="false">https://github.com/azxcvn/mpvEx-CN</string>
     <string name="swap_the_volume_and_brightness_slider">交换音量和亮度滑块</string>
     <string name="pref_player_display_reduce_player_animation">减少播放器动画</string>
     <string name="pref_player_display_hide_player_control_time">隐藏播放器控制时间</string>

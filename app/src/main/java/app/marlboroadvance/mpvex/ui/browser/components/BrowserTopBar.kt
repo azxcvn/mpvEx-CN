@@ -11,7 +11,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.automirrored.filled.Sort
-import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Block
@@ -80,7 +79,6 @@ fun BrowserTopBar(
   onBackClick: (() -> Unit)? = null,
   onSortClick: (() -> Unit)? = null,
   onSearchClick: (() -> Unit)? = null,
-  onViewModeToggle: (() -> Unit)? = null,
   onSettingsClick: (() -> Unit)? = null,
   onDeleteClick: (() -> Unit)? = null,
   onRenameClick: (() -> Unit)? = null,
@@ -122,7 +120,6 @@ fun BrowserTopBar(
       onBackClick = onBackClick,
       onSortClick = onSortClick,
       onSearchClick = onSearchClick,
-      onViewModeToggle = onViewModeToggle,
       onSettingsClick = onSettingsClick,
       additionalActions = additionalActions,
       modifier = modifier,
@@ -141,7 +138,6 @@ private fun NormalTopBar(
   onBackClick: (() -> Unit)?,
   onSortClick: (() -> Unit)?,
   onSearchClick: (() -> Unit)?,
-  onViewModeToggle: (() -> Unit)?,
   onSettingsClick: (() -> Unit)?,
   additionalActions: @Composable RowScope.() -> Unit,
   modifier: Modifier = Modifier,
@@ -260,19 +256,6 @@ private fun NormalTopBar(
           Icon(
             Icons.Filled.Search,
             contentDescription = "搜索",
-            modifier = Modifier.size(24.dp),
-            tint = MaterialTheme.colorScheme.secondary,
-          )
-        }
-      }
-      if (onViewModeToggle != null) {
-        IconButton(
-          onClick = onViewModeToggle,
-          modifier = Modifier.padding(horizontal = 2.dp),
-        ) {
-          Icon(
-            Icons.AutoMirrored.Filled.ViewList,
-            contentDescription = "切换视图模式",
             modifier = Modifier.size(24.dp),
             tint = MaterialTheme.colorScheme.secondary,
           )
