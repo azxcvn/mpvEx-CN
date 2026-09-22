@@ -132,12 +132,12 @@ class NetworkStreamingProvider : ContentProvider() {
                 }
               }
             }.onFailure { error ->
-              writeFd.closeWithError(error.message ?: "Unknown error")
+              writeFd.closeWithError(error.message ?: "未知错误")
             }
           }
         } catch (e: Exception) {
           try {
-            writeFd.closeWithError(e.message ?: "Unknown error")
+            writeFd.closeWithError(e.message ?: "未知错误")
           } catch (closeError: Exception) {
             // Ignore
           }

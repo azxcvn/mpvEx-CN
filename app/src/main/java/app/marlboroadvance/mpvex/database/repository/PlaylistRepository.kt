@@ -105,6 +105,30 @@ class PlaylistRepository(private val playlistDao: PlaylistDao) {
     }
   }
 
+  /**
+   * Removes any playlist items (across all playlists) that reference the given
+   * file path. Called when a video is deleted so playlists don't keep dangling
+   * entries. Returns the number of removed items.
+   */
+  suspend fun removeItemsByFilePath(filePath: String): Int {
+    if (filePath.isBlank()) return 0
+    return playlistDao.deleteItemsByFilePath(filePath)
+  }
+
+  /**
+   * Removes any playlist items (across all playlists) referencing any of the
+   * given file paths. Returns the number of removed items.
+   */
+  suspend fun removeItemsByFilePaths(filePaths: List<String>): Int {
+    if (filePaths.isEmpty()) return 0
+    var removed = 0
+    // Chunk to stay under SQLite's variable limit (999).
+    filePaths.chunked(900).forEach { chunk ->
+      removed += playlistDao.deleteItemsByFilePaths(chunk)
+    }
+    return removed
+  }
+
   fun observePlaylistItems(playlistId: Int): Flow<List<PlaylistItemEntity>> =
     playlistDao.observePlaylistItems(playlistId)
 
@@ -201,7 +225,7 @@ class PlaylistRepository(private val playlistDao: PlaylistDao) {
             PlaylistItemEntity(
               playlistId = playlistId.toInt(),
               filePath = m3uItem.url,
-              fileName = m3uItem.title ?: "Item ${index + 1}",
+              fileName = m3uItem.title ?: "项目 ${index + 1}",
               position = index,
               addedAt = now
             )
@@ -242,7 +266,7 @@ class PlaylistRepository(private val playlistDao: PlaylistDao) {
             PlaylistItemEntity(
               playlistId = playlistId.toInt(),
               filePath = m3uItem.url,
-              fileName = m3uItem.title ?: "Item ${index + 1}",
+              fileName = m3uItem.title ?: "项目 ${index + 1}",
               position = index,
               addedAt = now
             )
@@ -264,10 +288,10 @@ class PlaylistRepository(private val playlistDao: PlaylistDao) {
   suspend fun refreshM3UPlaylist(playlistId: Int): Result<Unit> {
     return try {
       val playlist = getPlaylistById(playlistId)
-        ?: return Result.failure(Exception("Playlist not found"))
+        ?: return Result.failure(Exception("未找到播放列表"))
       
       if (!playlist.isM3uPlaylist || playlist.m3uSourceUrl == null) {
-        return Result.failure(Exception("Not an M3U playlist or no source URL available"))
+        return Result.failure(Exception("不是 M3U 播放列表或没有可用的来源链接"))
       }
       
       val parseResult = M3UParser.parseFromUrl(playlist.m3uSourceUrl)
@@ -283,7 +307,7 @@ class PlaylistRepository(private val playlistDao: PlaylistDao) {
             PlaylistItemEntity(
               playlistId = playlistId,
               filePath = m3uItem.url,
-              fileName = m3uItem.title ?: "Item ${index + 1}",
+              fileName = m3uItem.title ?: "项目 ${index + 1}",
               position = index,
               addedAt = now
             )

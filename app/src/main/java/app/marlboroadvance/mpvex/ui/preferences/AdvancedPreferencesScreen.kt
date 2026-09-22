@@ -233,7 +233,7 @@ object AdvancedPreferencesScreen : Screen {
                     tree.createFile("application/octet-stream", "mpv.conf")
                   }
                   withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "MPV directory ready ✓", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "MPV 目录已就绪 ✓", Toast.LENGTH_SHORT).show()
                   }
                 }
               }.onFailure { e ->
@@ -436,76 +436,6 @@ object AdvancedPreferencesScreen : Screen {
             }
           }
           
-          // Scripts Section
-          item {
-            PreferenceSectionHeader(title = "脚本")
-          }
-          
-          item {
-            PreferenceCard {
-              val selectedScripts by preferences.selectedLuaScripts.collectAsState()
-              val enableLuaScripts by preferences.enableLuaScripts.collectAsState()
-              
-              SwitchPreference(
-                value = enableLuaScripts,
-                onValueChange = preferences.enableLuaScripts::set,
-                title = { Text("启用 Lua 脚本") },
-                summary = { 
-                  Text(
-                    "从配置目录加载 Lua 脚本",
-                    color = MaterialTheme.colorScheme.outline,
-                  ) 
-                },
-              )
-              
-              PreferenceDivider()
-              
-              Preference(
-                title = { Text("管理 Lua 脚本") },
-                summary = {
-                  when {
-                    mpvConfStorageLocation.isBlank() || !enableLuaScripts -> Text(
-                      "请先设置存储位置并启用 Lua 脚本", 
-                      color = MaterialTheme.colorScheme.outline
-                    )
-                    selectedScripts.isEmpty() -> Text(
-                      "未启用脚本", 
-                      color = MaterialTheme.colorScheme.outline
-                    )
-                    selectedScripts.size == 1 -> Text(
-                      "已启用 1 个脚本",
-                      color = MaterialTheme.colorScheme.outline
-                    )
-                    else -> Text(
-                      "已启用 ${selectedScripts.size} 个脚本",
-                      color = MaterialTheme.colorScheme.outline
-                    )
-                  }
-                },
-                onClick = {
-                  backStack.add(LuaScriptsScreen)
-                },
-                enabled = mpvConfStorageLocation.isNotBlank() && enableLuaScripts,
-              )
-
-              PreferenceDivider()
-
-              Preference(
-                title = { Text("自定义 Lua") },
-                summary = {
-                  Text(
-                    "创建和管理自定义 Lua 按钮",
-                    color = MaterialTheme.colorScheme.outline
-                  )
-                },
-                onClick = {
-                  backStack.add(app.marlboroadvance.mpvex.ui.preferences.CustomButtonScreen)
-                },
-                enabled = enableLuaScripts,
-              )
-            }
-          }
-          
           // History Section
           item {
             PreferenceSectionHeader(title = "历史记录")
@@ -697,6 +627,7 @@ object AdvancedPreferencesScreen : Screen {
           item {
             PreferenceCard {
               val activity = LocalActivity.current!!
+              @Suppress("DEPRECATION")
               val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
               val verboseLogging by preferences.verboseLogging.collectAsState()
               

@@ -275,7 +275,7 @@ fun FolderCard(
           // Hide chips at storage root level (when videoCount is 0)
             if (showTotalVideosChip && folder.videoCount > 0) {
               Text(
-                if (folder.videoCount == 1) "1 Video" else "${folder.videoCount} Videos",
+                "${folder.videoCount} 个视频",
                 style = MaterialTheme.typography.labelSmall,
                 modifier =
                   Modifier

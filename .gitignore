@@ -15,3 +15,7 @@ app/release
 /app/fdroid/
 /app/playstore/
 /woaini
+.kotlin/
+keystore.properties
+*.jks
+*.keystore

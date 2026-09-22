@@ -53,7 +53,7 @@ class SettingsManager(
         context.contentResolver.openOutputStream(outputUri)?.use { outputStream ->
           val stats = writeSettingsToXml(outputStream)
           Result.success(stats)
-        } ?: Result.failure(Exception("Failed to open output stream"))
+        } ?: Result.failure(Exception("无法打开输出流"))
       } catch (e: Exception) {
         Result.failure(e)
       }
@@ -66,7 +66,7 @@ class SettingsManager(
         context.contentResolver.openInputStream(inputUri)?.use { inputStream ->
           val stats = readSettingsFromXml(inputStream)
           Result.success(stats)
-        } ?: Result.failure(Exception("Failed to open input stream"))
+        } ?: Result.failure(Exception("无法打开输入流"))
       } catch (e: Exception) {
         Result.failure(e)
       }

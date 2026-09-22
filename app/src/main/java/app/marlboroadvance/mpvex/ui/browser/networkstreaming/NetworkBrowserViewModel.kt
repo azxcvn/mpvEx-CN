@@ -50,7 +50,7 @@ class NetworkBrowserViewModel(
 
       try {
         val connection = repository.getConnectionById(connectionId)
-          ?: throw Exception("Connection not found")
+          ?: throw Exception("未找到连接")
 
         repository.listFiles(connection, currentPath)
           .onSuccess { fileList ->
@@ -60,10 +60,10 @@ class NetworkBrowserViewModel(
             )
           }
           .onFailure { e ->
-            _error.value = e.message ?: "Unknown error"
+            _error.value = e.message ?: "未知错误"
           }
       } catch (e: Exception) {
-        _error.value = e.message ?: "Unknown error"
+        _error.value = e.message ?: "未知错误"
       } finally {
         _isLoading.value = false
       }
@@ -79,7 +79,7 @@ class NetworkBrowserViewModel(
     viewModelScope.launch {
       try {
         val connection = repository.getConnectionById(connectionId)
-          ?: throw Exception("Connection not found")
+          ?: throw Exception("未找到连接")
 
         // Use proxy server for protocols that need seeking support
         val useProxy = connection.protocol in PROXY_PROTOCOLS
@@ -120,7 +120,7 @@ class NetworkBrowserViewModel(
         application.startActivity(intent)
       } catch (e: Exception) {
         Log.e(TAG, "Error playing video", e)
-        _error.value = e.message ?: "Unknown error"
+        _error.value = e.message ?: "未知错误"
       }
     }
   }

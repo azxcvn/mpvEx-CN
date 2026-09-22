@@ -34,7 +34,7 @@ fun DeleteConfirmationDialog(
 ) {
   if (!isOpen) return
 
-  val itemText = if (itemCount == 1) itemType else "${itemType}s"
+  val itemText = itemType
 
   AlertDialog(
     onDismissRequest = onDismiss,
@@ -58,7 +58,7 @@ fun DeleteConfirmationDialog(
           modifier = Modifier.fillMaxWidth(),
         ) {
           Text(
-            text = "此操作无法撤销。选中的${if (itemCount == 1) "项目" else "项目"}将被永久删除。",
+            text = "此操作无法撤销。选中的${itemText}将被永久删除。",
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onErrorContainer,

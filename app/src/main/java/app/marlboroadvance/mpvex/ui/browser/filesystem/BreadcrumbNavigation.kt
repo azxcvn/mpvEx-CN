@@ -44,7 +44,7 @@ fun BreadcrumbNavigation(
       if (index > 0) {
         Icon(
           imageVector = Icons.Filled.ChevronRight,
-          contentDescription = "Separator",
+          contentDescription = "分隔符",
           tint = MaterialTheme.colorScheme.onSurfaceVariant,
           modifier = Modifier.padding(horizontal = 4.dp),
         )

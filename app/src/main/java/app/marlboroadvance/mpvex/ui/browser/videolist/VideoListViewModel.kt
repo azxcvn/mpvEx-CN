@@ -10,11 +10,15 @@ import app.marlboroadvance.mpvex.domain.playbackstate.repository.PlaybackStateRe
 import app.marlboroadvance.mpvex.repository.MediaFileRepository
 import app.marlboroadvance.mpvex.ui.browser.base.BaseBrowserViewModel
 import app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
+import app.marlboroadvance.mpvex.utils.media.MediaIdentifier
 import app.marlboroadvance.mpvex.utils.media.MediaLibraryEvents
 import app.marlboroadvance.mpvex.utils.media.MetadataRetrieval
-import app.marlboroadvance.mpvex.utils.storage.FolderViewScanner
+import app.marlboroadvance.mpvex.utils.storage.FileTypeUtils
+import app.marlboroadvance.mpvex.repository.VideoStatCache
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -24,6 +28,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.io.File
@@ -49,14 +54,23 @@ class VideoListViewModel(
   private val recentlyPlayedRepository: app.marlboroadvance.mpvex.domain.recentlyplayed.repository.RecentlyPlayedRepository by inject()
   // Using MediaFileRepository singleton directly
 
-  private val _videos = MutableStateFlow<List<Video>>(emptyList())
+  // Instant lookup from VideoStatCache (0ms when preloaded or in memory)
+  private val initialEntry = VideoStatCache.load(application, bucketId)
+  private val initialVideos = initialEntry?.videos ?: emptyList()
+
+  private val _videos = MutableStateFlow(initialVideos)
   val videos: StateFlow<List<Video>> = _videos.asStateFlow()
 
-  private val _videosWithPlaybackInfo = MutableStateFlow<List<VideoWithPlaybackInfo>>(emptyList())
+  private val _videosWithPlaybackInfo = MutableStateFlow(
+    initialVideos.map { VideoWithPlaybackInfo(it) }
+  )
   val videosWithPlaybackInfo: StateFlow<List<VideoWithPlaybackInfo>> = _videosWithPlaybackInfo.asStateFlow()
 
-  private val _isLoading = MutableStateFlow(true)
+  private val _isLoading = MutableStateFlow(initialVideos.isEmpty())
   val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+  private val _hasCompletedInitialLoad = MutableStateFlow(initialVideos.isNotEmpty())
+  val hasCompletedInitialLoad: StateFlow<Boolean> = _hasCompletedInitialLoad.asStateFlow()
 
   // Track if items were deleted/moved leaving folder empty
   private val _videosWereDeletedOrMoved = MutableStateFlow(false)
@@ -85,59 +99,92 @@ class VideoListViewModel(
   // Track previous video count to detect if folder became empty
   private var previousVideoCount = 0
 
+  // Single tracked job to prevent concurrent load race conditions
+  private var loadJob: Job? = null
+
+  private var cachedFolderLastModified: Long = 0L
+
   private val tag = "VideoListViewModel"
 
   init {
-    loadVideos()
+    previousVideoCount = initialVideos.size
 
-    // Listen for global media library changes and refresh this list when they occur
+    if (initialVideos.isNotEmpty()) {
+      cachedFolderLastModified = initialEntry?.folderLastModified ?: 0L
+
+      // Load playback info for cached items immediately in background
+      viewModelScope.launch(Dispatchers.IO) {
+        loadPlaybackInfo(initialVideos)
+      }
+
+      // Defer background media sync by 400ms so navigation transition completes at full 120fps with zero contention
+      viewModelScope.launch(Dispatchers.IO) {
+        delay(400)
+        loadVideos(isBackgroundRefresh = true)
+      }
+    } else {
+      loadVideos(isBackgroundRefresh = false)
+    }
+
+    // Listen for global media library changes and refresh silently in background
     viewModelScope.launch(Dispatchers.IO) {
       MediaLibraryEvents.changes.collectLatest {
-        // Clear cache when media library changes
-        MediaFileRepository.clearCache()
-        loadVideos()
+        refresh()
       }
     }
   }
 
   override fun refresh() {
-    Log.d(tag, "Hard refreshing video list for bucket: $bucketId")
-    
-    // Set loading state
+    Log.d(tag, "Refreshing video list for bucket: $bucketId")
+    cachedFolderLastModified = 0L // Force full stat refresh
+    VideoStatCache.invalidate(bucketId)
     _isLoading.value = true
-    
-    // Clear cache to force fresh data from filesystem
-    MediaFileRepository.clearCache()
-    FolderViewScanner.clearCache()
-    
-    // Trigger media scan before loading to ensure MediaStore is up-to-date
-    triggerMediaScan()
-    
-    // Wait a bit for MediaStore to update, then reload
     viewModelScope.launch(Dispatchers.IO) {
-      delay(1500) // Give MediaStore time to index
-      loadVideos()
+      triggerMediaScan()
+      loadVideos(isBackgroundRefresh = false)
     }
   }
 
-  private fun loadVideos() {
+  /**
+   * Fast refresh of playback state (watch progress, watched status)
+   * without clearing cache, rescanning disk, or showing a loading indicator.
+   */
+  fun refreshPlaybackInfo() {
     viewModelScope.launch(Dispatchers.IO) {
+      val currentVideos = _videos.value
+      if (currentVideos.isNotEmpty()) {
+        loadPlaybackInfo(currentVideos)
+      } else {
+        loadVideos(isBackgroundRefresh = false)
+      }
+    }
+  }
+
+  private fun loadVideos(isBackgroundRefresh: Boolean = false) {
+    // Cancel any previous in-flight load job to prevent race conditions
+    loadJob?.cancel()
+    loadJob = viewModelScope.launch(Dispatchers.IO) {
       try {
-        // First attempt to load videos (basic info from MediaStore)
+        if (!isBackgroundRefresh && _videos.value.isEmpty()) {
+          _isLoading.value = true
+        }
+
+        val folderFile = File(bucketId)
+        val currentFolderMod = if (folderFile.exists()) folderFile.lastModified() else 0L
+        val needsMetadata = MetadataRetrieval.isVideoMetadataNeeded(browserPreferences)
+        val isMissingMetadata = needsMetadata && _videos.value.any { it.width > 0 && it.fps == 0f && !it.resolution.contains("@") }
+
+        // Fast stat check: if folder's filesystem lastModified hasn't changed AND metadata is already present,
+        // no files were added, deleted, or renamed. Skip heavy rescan completely!
+        if (isBackgroundRefresh && currentFolderMod > 0L && (currentFolderMod == cachedFolderLastModified || VideoStatCache.isFolderStatUnchanged(bucketId, currentFolderMod)) && _videos.value.isNotEmpty() && !isMissingMetadata) {
+          Log.d(tag, "Folder stat unchanged and metadata complete ($currentFolderMod), skipping rescan")
+          return@launch
+        }
+
+        // Fast query of basic video info from MediaStore (or filesystem fallback)
         var videoList = MediaFileRepository.getVideosInFolder(getApplication(), bucketId)
 
-        // Enrich with metadata only if chips are enabled
-        if (MetadataRetrieval.isVideoMetadataNeeded(browserPreferences)) {
-          Log.d(tag, "Metadata chips enabled, enriching ${videoList.size} videos")
-          videoList = MetadataRetrieval.enrichVideosIfNeeded(
-            context = getApplication(),
-            videos = videoList,
-            browserPreferences = browserPreferences,
-            metadataCache = metadataCache
-          )
-        } else {
-          Log.d(tag, "Metadata chips disabled, skipping metadata extraction")
-        }
+        if (!isActive) return@launch
 
         // Check if folder became empty after having videos
         if (previousVideoCount > 0 && videoList.isEmpty()) {
@@ -152,41 +199,96 @@ class VideoListViewModel(
         previousVideoCount = videoList.size
 
         if (videoList.isEmpty()) {
-          Log.d(tag, "No videos found for bucket $bucketId - attempting media rescan")
-          triggerMediaScan()
-          delay(1000)
-          var retryVideoList = MediaFileRepository.getVideosInFolder(getApplication(), bucketId)
+          // Only trigger rescan if we have no videos at all (not even cached)
+          if (_videos.value.isEmpty()) {
+            Log.d(tag, "No videos found for bucket $bucketId - attempting media rescan")
+            triggerMediaScan()
+            delay(1000)
+            if (!isActive) return@launch
+            var retryVideoList = MediaFileRepository.getVideosInFolder(getApplication(), bucketId)
+            if (!isActive) return@launch
 
-          // Enrich retry list if needed
-          if (MetadataRetrieval.isVideoMetadataNeeded(browserPreferences)) {
-            retryVideoList = MetadataRetrieval.enrichVideosIfNeeded(
-              context = getApplication(),
-              videos = retryVideoList,
-              browserPreferences = browserPreferences,
-              metadataCache = metadataCache
-            )
+            if (previousVideoCount > 0 && retryVideoList.isEmpty()) {
+              _videosWereDeletedOrMoved.value = true
+            } else if (retryVideoList.isNotEmpty()) {
+              _videosWereDeletedOrMoved.value = false
+            }
+            previousVideoCount = retryVideoList.size
+            videoList = retryVideoList
           }
+        }
 
-          // Update count after retry
-          if (previousVideoCount > 0 && retryVideoList.isEmpty()) {
-            _videosWereDeletedOrMoved.value = true
-          } else if (retryVideoList.isNotEmpty()) {
-            _videosWereDeletedOrMoved.value = false
+        if (!isActive) return@launch
+
+        // INCREMENTAL UPDATE BASED ON FILE STATS:
+        // Match existing cached videos by path. If a file's size & dateModified match AND it already has metadata,
+        // reuse the cached metadata directly without re-extracting!
+        val existingMap = _videos.value.associateBy { it.path }
+        val needsEnrichment = mutableListOf<Video>()
+        val reconciledVideos = videoList.map { scanned ->
+          val cached = existingMap[scanned.path]
+          val hasFps = cached != null && (cached.fps > 0f || (cached.width > 0 && cached.resolution.contains("@")))
+          val isCachedEnriched = cached != null && (
+            (!browserPreferences.showFramerateInResolution.get() || hasFps) &&
+            (!browserPreferences.showSubtitleIndicator.get() || cached.hasEmbeddedSubtitles || cached.subtitleCodec.isNotEmpty() || hasFps)
+          )
+          if (cached != null && cached.size == scanned.size && cached.dateModified == scanned.dateModified && (!needsMetadata || isCachedEnriched)) {
+            // Unchanged file with complete metadata: reuse cached metadata directly
+            cached
+          } else {
+            // New, modified, or missing metadata: needs enrichment
+            needsEnrichment.add(scanned)
+            scanned
           }
-          previousVideoCount = retryVideoList.size
+        }
 
-          _videos.value = retryVideoList
-          loadPlaybackInfo(retryVideoList)
+        // Only enrich new, modified, or missing metadata files!
+        val finalVideos = if (needsEnrichment.isNotEmpty() && needsMetadata) {
+          val enrichedNew = MetadataRetrieval.enrichVideosIfNeeded(
+            context = getApplication(),
+            videos = needsEnrichment,
+            browserPreferences = browserPreferences,
+            metadataCache = metadataCache
+          ).associateBy { it.path }
+          reconciledVideos.map { enrichedNew[it.path] ?: it }
         } else {
-          _videos.value = videoList
-          loadPlaybackInfo(videoList)
+          reconciledVideos
+        }
+
+        if (!isActive) return@launch
+
+        // Save updated list and folder stat directly to the JSON stat file
+        cachedFolderLastModified = currentFolderMod
+        VideoStatCache.save(getApplication(), bucketId, currentFolderMod, finalVideos)
+
+        // Check if video list actually changed (including metadata fields like fps, subtitles, resolution)
+        val hasChanged = _videos.value != finalVideos
+
+        if (hasChanged || _videosWithPlaybackInfo.value.isEmpty()) {
+          _videos.value = finalVideos
+          val existingInfoMap = _videosWithPlaybackInfo.value.associateBy { it.video.path }
+          _videosWithPlaybackInfo.value = finalVideos.map { v ->
+            val prev = existingInfoMap[v.path]
+            if (prev != null) {
+              prev.copy(video = v)
+            } else {
+              VideoWithPlaybackInfo(v)
+            }
+          }
+          loadPlaybackInfo(finalVideos)
         }
       } catch (e: Exception) {
+        if (e is kotlinx.coroutines.CancellationException) throw e
         Log.e(tag, "Error loading videos for bucket $bucketId", e)
-        _videos.value = emptyList()
-        _videosWithPlaybackInfo.value = emptyList()
+        if (_videos.value.isEmpty()) {
+          _videos.value = emptyList()
+          _videosWithPlaybackInfo.value = emptyList()
+        }
       } finally {
-        _isLoading.value = false
+        if (isActive) {
+          _isLoading.value = false
+          _hasCompletedInitialLoad.value = true
+        }
       }
     }
   }
@@ -201,7 +303,7 @@ class VideoListViewModel(
   private suspend fun loadPlaybackInfo(videos: List<Video>) {
     val videosWithInfo =
       videos.map { video ->
-        val playbackState = playbackStateRepository.getVideoDataByTitle(video.displayName)
+        val playbackState = playbackStateRepository.getVideoDataByTitle(MediaIdentifier.forLocalPath(video.path))
         val watchedThreshold = browserPreferences.watchedThreshold.get()
 
         // Calculate watch progress (0.0 to 1.0)
@@ -218,10 +320,19 @@ class VideoListViewModel(
           null
         }
 
-        // Check if video is old and unplayed
-        // Video is old if it's been more than threshold days since it was added/modified
-        // Video is unplayed if there's no playback state record
-        val isOldAndUnplayed = playbackState == null
+        // Check if video is "new" (recently added) and unplayed.
+        // A video qualifies if:
+        //   1. It has no playback state (never been played), AND
+        //   2. It was added/modified within the configured threshold days.
+        val isUnplayed = playbackState == null
+        val isOldAndUnplayed = if (isUnplayed) {
+          val thresholdDays = appearancePreferences.unplayedOldVideoDays.get()
+          val thresholdMillis = thresholdDays * 24 * 60 * 60 * 1000L
+          val videoAge = System.currentTimeMillis() - (video.dateModified * 1000L)
+          videoAge <= thresholdMillis
+        } else {
+          false
+        }
 
         val isWatched = if (playbackState != null && video.duration > 0) {
            val durationSeconds = video.duration / 1000
@@ -245,7 +356,7 @@ class VideoListViewModel(
     _videosWithPlaybackInfo.value = videosWithInfo
   }
 
-  private fun triggerMediaScan() {
+  private suspend fun triggerMediaScan() = withContext(Dispatchers.IO) {
     try {
       // Trigger a targeted media scan for the specific folder
       val folder = File(bucketId)
@@ -253,9 +364,7 @@ class VideoListViewModel(
       if (folder.exists() && folder.isDirectory) {
         // Scan all video files in the folder
         val videoFiles = folder.listFiles { file ->
-          file.isFile && file.extension.lowercase() in listOf(
-            "mp4", "mkv", "avi", "mov", "wmv", "flv", "webm", "m4v", "3gp", "mpg", "mpeg", "ts", "m2ts"
-          )
+          file.isFile && FileTypeUtils.isVideoFile(file)
         }
         
         if (!videoFiles.isNullOrEmpty()) {

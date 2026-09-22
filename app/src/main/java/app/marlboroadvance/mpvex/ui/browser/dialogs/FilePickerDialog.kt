@@ -466,7 +466,7 @@ private fun NavigationButtons(
         contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
       )
     ) {
-      Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", modifier = Modifier.size(iconSize))
+      Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回", modifier = Modifier.size(iconSize))
     }
   }
 
@@ -478,7 +478,7 @@ private fun NavigationButtons(
       contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
     )
   ) {
-    Icon(Icons.Default.Home, "Home", modifier = Modifier.size(iconSize))
+    Icon(Icons.Default.Home, "主目录", modifier = Modifier.size(iconSize))
   }
 
   FilledTonalIconButton(
@@ -489,7 +489,7 @@ private fun NavigationButtons(
       contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
     )
   ) {
-    Icon(Icons.Default.DriveFolderUpload, "System Picker", modifier = Modifier.size(iconSize))
+    Icon(Icons.Default.DriveFolderUpload, "系统选择器", modifier = Modifier.size(iconSize))
   }
 }
 

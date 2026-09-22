@@ -428,7 +428,7 @@ private fun FrameInfoDisplay(
       verticalAlignment = Alignment.CenterVertically,
     ) {
       Text(
-        text = "Frame: ",
+        text = "帧：",
         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.ExtraBold),
         color = MaterialTheme.colorScheme.tertiary,
       )
@@ -448,7 +448,7 @@ private fun FrameInfoDisplay(
       verticalAlignment = Alignment.CenterVertically,
     ) {
       Text(
-        text = "Timestamp: ",
+        text = "时间戳：",
         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.ExtraBold),
         color = MaterialTheme.colorScheme.tertiary,
       )
@@ -624,7 +624,7 @@ private suspend fun takeSnapshot(
       // Check if file was created
       if (!tempFile.exists() || tempFile.length() == 0L) {
         withContext(Dispatchers.Main) {
-          Toast.makeText(context, "Failed to create screenshot", Toast.LENGTH_SHORT).show()
+          Toast.makeText(context, "截图创建失败", Toast.LENGTH_SHORT).show()
         }
         return@withContext
       }
@@ -676,7 +676,7 @@ private suspend fun takeSnapshot(
               ).show()
           }
         } else {
-          throw Exception("Failed to create MediaStore entry")
+          throw Exception("创建 MediaStore 条目失败")
         }
       } else {
         // Android 9 and below - Use legacy external storage
@@ -690,7 +690,7 @@ private suspend fun takeSnapshot(
         if (!snapshotsDir.exists()) {
           val created = snapshotsDir.mkdirs()
           if (!created && !snapshotsDir.exists()) {
-            throw Exception("Failed to create mpvSnaps directory")
+            throw Exception("创建 mpvSnaps 目录失败")
           }
         }
 
@@ -717,7 +717,7 @@ private suspend fun takeSnapshot(
       }
     } catch (e: Exception) {
       withContext(Dispatchers.Main) {
-        Toast.makeText(context, "Failed to save snapshot: ${e.message}", Toast.LENGTH_LONG).show()
+        Toast.makeText(context, "保存截图失败：${e.message}", Toast.LENGTH_LONG).show()
       }
     }
   }

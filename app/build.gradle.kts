@@ -1,5 +1,6 @@
 import com.android.build.api.variant.FilterConfiguration
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
 
 plugins {
   alias(libs.plugins.android.application)
@@ -7,18 +8,45 @@ plugins {
   alias(libs.plugins.kotlinx.serialization)
   alias(libs.plugins.ksp)
   alias(libs.plugins.room)
+  alias(libs.plugins.aboutlibraries)
 }
+
+// ---------------------------------------------------------------------------
+// Release signing
+//
+// Credentials are read from `keystore.properties` in the project root, which is
+// git-ignored. If that file does not exist the release variant stays unsigned,
+// so a fresh clone / CI can still build.
+//
+// keystore.properties format (use forward slashes, backslash is an escape char):
+//   storeFile=C:/path/to/your.jks      # absolute, or relative to the project root
+//   storePassword=****
+//   keyAlias=****
+//   keyPassword=****
+// ---------------------------------------------------------------------------
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties().apply {
+  if (keystorePropertiesFile.exists()) {
+    // Read as UTF-8 on purpose: keystore paths may contain non-ASCII characters.
+    keystorePropertiesFile.reader(Charsets.UTF_8).use { load(it) }
+  }
+}
+val hasReleaseSigning = keystorePropertiesFile.exists()
+
+fun signingProperty(name: String): String =
+  keystoreProperties.getProperty(name)
+    ?: error("keystore.properties is missing '$name' (expected keys: storeFile, storePassword, keyAlias, keyPassword)")
 
 android {
   namespace = "app.marlboroadvance.mpvex"
-  compileSdk = 36
+  compileSdk = 37
 
   defaultConfig {
     applicationId = "app.marlboroadvance.mpvex"
     minSdk = 26
     targetSdk = 36
-    versionCode = 131
-    versionName = "1.3.1"
+    versionCode = 132
+    versionName = "1.3.2"
 
     vectorDrawables {
       useSupportLibrary = true
@@ -33,6 +61,7 @@ android {
   productFlavors {
     create("standard") {
       dimension = "distribution"
+      isDefault = true
       buildConfigField("boolean", "ENABLE_UPDATE_FEATURE", "true")
       buildConfigField("boolean", "SCOPED_STORAGE_ONLY", "false")
     }
@@ -66,8 +95,26 @@ android {
     }
   }
 
+  signingConfigs {
+    if (hasReleaseSigning) {
+      create("release") {
+        storeFile = rootProject.file(signingProperty("storeFile"))
+        storePassword = signingProperty("storePassword")
+        keyAlias = signingProperty("keyAlias")
+        keyPassword = signingProperty("keyPassword")
+        // Keep the same signing scheme as the already published APKs (v2 only).
+        enableV1Signing = false
+        enableV2Signing = true
+        enableV3Signing = false
+      }
+    }
+  }
+
   buildTypes {
     named("release") {
+      if (hasReleaseSigning) {
+        signingConfig = signingConfigs.getByName("release")
+      }
       isMinifyEnabled = true
       isShrinkResources = true
       proguardFiles(
@@ -147,7 +194,6 @@ androidComponents {
 kotlin {
   compilerOptions {
     freeCompilerArgs.addAll(
-      "-Xwhen-guards",
       "-Xcontext-parameters",
       "-Xannotation-default-target=param-property",
       "-opt-in=com.google.accompanist.permissions.ExperimentalPermissionsApi",
@@ -193,6 +239,7 @@ dependencies {
   // implementation(libs.seeker)
   implementation(files("libs/seeker-2.0.1.aar"))
   implementation(libs.compose.prefs)
+  implementation(libs.aboutlibraries.compose.m3)
 
   implementation(libs.accompanist.permissions)
 

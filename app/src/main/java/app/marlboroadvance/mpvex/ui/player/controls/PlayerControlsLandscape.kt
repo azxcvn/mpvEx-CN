@@ -11,7 +11,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.MaterialTheme
@@ -24,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.marlboroadvance.mpvex.preferences.PlayerButton
@@ -66,10 +69,8 @@ fun TopLeftPlayerControlsLandscape(
       modifier =
         Modifier
           .height(45.dp)
-          .clip(CircleShape)
+          .clip(RoundedCornerShape(50))
           .clickable(
-            interactionSource = titleInteractionSource,
-            indication = ripple(bounded = true),
             enabled = playlistModeEnabled,
             onClick = {
               clickEvent()
@@ -78,7 +79,7 @@ fun TopLeftPlayerControlsLandscape(
           ),
     ) {
       Surface(
-        shape = CircleShape,
+        shape = RoundedCornerShape(50),
         color =
           if (hideBackground) {
             Color.Transparent
@@ -102,30 +103,41 @@ fun TopLeftPlayerControlsLandscape(
       ) {
         Row(
           verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
           modifier =
-            Modifier
-              .padding(
-                start = MaterialTheme.spacing.medium,
-                end = MaterialTheme.spacing.medium,
-                top = MaterialTheme.spacing.small,
-                bottom = MaterialTheme.spacing.small,
-              ),
+            Modifier.padding(
+              horizontal = MaterialTheme.spacing.medium,
+              vertical = MaterialTheme.spacing.small,
+            ),
         ) {
+          viewModel.getPlaylistInfo()?.let { playlistInfo ->
+            Text(
+              text = playlistInfo,
+              textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+              style = MaterialTheme.typography.bodyMedium,
+              maxLines = 1,
+              overflow = TextOverflow.Visible,
+              fontFamily = FontFamily.Monospace,
+              color = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+              text = Typography.bullet.toString(),
+              textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+              style = MaterialTheme.typography.bodyMedium,
+              maxLines = 1,
+              color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+              overflow = TextOverflow.Clip,
+            )
+          }
           Text(
-            mediaTitle ?: "",
+            text = mediaTitle ?: "",
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             style = MaterialTheme.typography.bodyMedium,
+            fontFamily = FontFamily.Monospace,
+            color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f, fill = false),
           )
-          viewModel.getPlaylistInfo()?.let { playlistInfo ->
-            Text(
-              " • $playlistInfo",
-              maxLines = 1,
-              overflow = TextOverflow.Visible,
-              style = MaterialTheme.typography.bodySmall,
-            )
-          }
         }
       }
     }

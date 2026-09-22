@@ -267,13 +267,35 @@ object FolderListScreen : Screen {
 
     // Lifecycle observer for refresh
     DisposableEffect(lifecycleOwner) {
+      var isFirstResume = true
       val observer = LifecycleEventObserver { _, event ->
         if (event == Lifecycle.Event.ON_RESUME) {
-          viewModel.recalculateNewVideoCounts()
+          if (isFirstResume) {
+            isFirstResume = false
+          } else {
+            // Full refresh (like the video/filesystem screens) so folders that were
+            // emptied or deleted externally reconcile with the filesystem, not just
+            // recalculating new-video counts on stale data.
+            viewModel.refresh()
+          }
         }
       }
       lifecycleOwner.lifecycle.addObserver(observer)
       onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    // When the user navigates back from VideoListScreen (or any child screen),
+    // the backstack shrinks and this screen reappears. The Activity lifecycle
+    // does NOT fire ON_RESUME in this case (all screens are in the same Activity),
+    // so we watch backstack.size directly and recalculate new-video counts
+    // immediately so folder badges reflect videos played during the last session.
+    val backstackSize = backstack.size
+    LaunchedEffect(backstackSize) {
+      // Only recalculate when we're at the top (FolderListScreen is visible),
+      // i.e., when the count drops back to 1 (just MainScreen + FolderList).
+      // Using > 0 guard to avoid running on initial composition before any
+      // child screens have been pushed.
+      viewModel.recalculateNewVideoCounts()
     }
 
     // Optimized back handler for immediate response
@@ -585,7 +607,7 @@ object FolderListScreen : Screen {
         isOpen = deleteDialogOpen.value,
         onDismiss = { deleteDialogOpen.value = false },
         onConfirm = { selectionManager.deleteSelected() },
-        itemType = "folder",
+        itemType = "文件夹",
         itemCount = selectionManager.selectedCount,
         itemNames = selectionManager.getSelectedItems().map { it.name },
       )
@@ -616,7 +638,7 @@ private fun FolderListContent(
 ) {
   val isGridMode = mediaLayoutMode == MediaLayoutMode.GRID
   val showLoading = isLoading && !hasCompletedInitialLoad
-  val showEmpty = folders.isEmpty() && hasCompletedInitialLoad && !foldersWereDeleted
+  val showEmpty = folders.isEmpty() && !isLoading && (hasCompletedInitialLoad || foldersWereDeleted)
 
   // Scrollbar alpha animation
   val isAtTop by remember {

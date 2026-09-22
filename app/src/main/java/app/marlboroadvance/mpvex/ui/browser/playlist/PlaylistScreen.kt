@@ -370,7 +370,7 @@ object PlaylistScreen : Screen {
             showDeleteDialog = false
           },
           itemCount = selectionManager.selectedCount,
-          itemType = "playlist",
+          itemType = "播放列表",
           itemNames = selectionManager.getSelectedItems().map { it.playlist.name },
         )
       }

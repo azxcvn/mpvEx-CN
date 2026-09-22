@@ -53,7 +53,7 @@ object M3UParser {
       
       val responseCode = connection.responseCode
       if (responseCode != HttpURLConnection.HTTP_OK) {
-        return@withContext M3UParseResult.Error("HTTP error: $responseCode")
+        return@withContext M3UParseResult.Error("HTTP 错误：$responseCode")
       }
       
       val content = BufferedReader(InputStreamReader(connection.inputStream, "UTF-8")).use { reader ->
@@ -65,7 +65,7 @@ object M3UParser {
       parseContent(content, url)
     } catch (e: Exception) {
       Log.e(TAG, "Error parsing M3U playlist", e)
-      M3UParseResult.Error("Failed to parse playlist: ${e.message}", e)
+      M3UParseResult.Error("解析播放列表失败：${e.message}", e)
     }
   }
   
@@ -80,7 +80,7 @@ object M3UParser {
         BufferedReader(InputStreamReader(inputStream, "UTF-8")).use { reader ->
           reader.readText()
         }
-      } ?: return@withContext M3UParseResult.Error("Failed to open file")
+      } ?: return@withContext M3UParseResult.Error("无法打开文件")
       
       // Get filename for playlist name
       val filename = context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
@@ -88,12 +88,12 @@ object M3UParser {
         if (nameIndex >= 0 && cursor.moveToFirst()) {
           cursor.getString(nameIndex)
         } else null
-      } ?: uri.lastPathSegment ?: "Local M3U Playlist"
+      } ?: uri.lastPathSegment ?: "本地 M3U 播放列表"
       
       parseContent(content, filename)
     } catch (e: Exception) {
       Log.e(TAG, "Error parsing M3U playlist from URI", e)
-      M3UParseResult.Error("Failed to parse playlist: ${e.message}", e)
+      M3UParseResult.Error("解析播放列表失败：${e.message}", e)
     }
   }
   
@@ -105,7 +105,7 @@ object M3UParser {
       val lines = content.lines().map { it.trim() }.filter { it.isNotEmpty() }
       
       if (lines.isEmpty()) {
-        return M3UParseResult.Error("Playlist is empty")
+        return M3UParseResult.Error("播放列表为空")
       }
       
       // Check if it's an extended M3U format
@@ -187,7 +187,7 @@ object M3UParser {
       }
       
       if (items.isEmpty()) {
-        return M3UParseResult.Error("No valid media URLs found in playlist")
+        return M3UParseResult.Error("播放列表中未找到有效的媒体 URL")
       }
       
       // Extract playlist name from source URL/filename or use default
@@ -201,16 +201,16 @@ object M3UParser {
             .replace('_', ' ')
             .replace('-', ' ')
             .trim()
-            .ifEmpty { "M3U Playlist" }
+            .ifEmpty { "M3U 播放列表" }
         }
-      } ?: "M3U Playlist"
+      } ?: "M3U 播放列表"
       
       Log.d(TAG, "Successfully parsed M3U playlist with ${items.size} items")
       return M3UParseResult.Success(playlistName, items)
       
     } catch (e: Exception) {
       Log.e(TAG, "Error parsing M3U content", e)
-      return M3UParseResult.Error("Failed to parse playlist content: ${e.message}", e)
+      return M3UParseResult.Error("解析播放列表内容失败：${e.message}", e)
     }
   }
   
@@ -290,7 +290,7 @@ object M3UParser {
         .replace('-', ' ')
         .replaceFirstChar { it.uppercase() }
     } catch (_: Exception) {
-      "M3U Playlist"
+      "M3U 播放列表"
     }
   }
 

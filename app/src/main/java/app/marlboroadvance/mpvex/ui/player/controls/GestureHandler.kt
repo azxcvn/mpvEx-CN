@@ -20,8 +20,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalRippleConfiguration
@@ -812,6 +812,7 @@ fun GestureHandler(
           var gestureType: String? = null
           var hasStartedSeeking = false
           var initialVideoPosition = 0f
+          var wasPlayerAlreadyPaused = false
           // Use the sensitivity preference instead of hardcoded value
           val seekSensitivity = horizontalSwipeSensitivity
           
@@ -840,6 +841,12 @@ fun GestureHandler(
                     gestureType = "horizontal_seek"
                     hasStartedSeeking = true
                     initialVideoPosition = position?.toFloat() ?: 0f
+                    
+                    // Pause before seeking to prevent decoder stalls
+                    wasPlayerAlreadyPaused = paused ?: false
+                    if (!wasPlayerAlreadyPaused) {
+                      viewModel.pause()
+                    }
                     
                     // Show seekbar and start seeking mode (same as seekbar scrubbing)
                     viewModel.showSeekBar()
@@ -893,6 +900,11 @@ fun GestureHandler(
 
           // Apply the final seek when gesture ends
           if (hasStartedSeeking) {
+            // Unpause if it wasn't paused before seeking
+            if (!wasPlayerAlreadyPaused) {
+              viewModel.unpause()
+            }
+            
             // Clear the horizontal seek update and hide seekbar after a short delay
             coroutineScope.launch {
               delay(300)
@@ -1036,8 +1048,8 @@ fun CombiningChevronsAnimation(
     Row(modifier = modifier) {
         Box {
              // Static Chevron
-             Icon(
-                imageVector = if (isRight) Icons.Filled.KeyboardArrowRight else Icons.Filled.KeyboardArrowLeft,
+              Icon(
+                imageVector = if (isRight) Icons.AutoMirrored.Filled.KeyboardArrowRight else Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                 contentDescription = null,
                 tint = Color.White,
                 modifier = Modifier.size(48.dp)
@@ -1076,7 +1088,7 @@ fun MovingChevron(
     val alpha = 1f - progress.value
     
     Icon(
-        imageVector = if (isRight) Icons.Filled.KeyboardArrowRight else Icons.Filled.KeyboardArrowLeft,
+        imageVector = if (isRight) Icons.AutoMirrored.Filled.KeyboardArrowRight else Icons.AutoMirrored.Filled.KeyboardArrowLeft,
         contentDescription = null,
         tint = Color.White,
         modifier = Modifier

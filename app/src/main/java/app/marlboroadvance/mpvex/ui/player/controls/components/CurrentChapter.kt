@@ -30,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -92,7 +93,7 @@ fun CurrentChapter(
       ) {
         Text(
           text = Utils.prettyTime(currentChapter.start.toInt()),
-          fontWeight = FontWeight.Bold,
+          fontFamily = FontFamily.Monospace,
           style = MaterialTheme.typography.bodyMedium,
           maxLines = 1,
           overflow = TextOverflow.Clip,
@@ -113,7 +114,7 @@ fun CurrentChapter(
             style = MaterialTheme.typography.bodyMedium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            fontWeight = FontWeight.ExtraBold,
+            fontFamily = FontFamily.Monospace,
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.basicMarquee(),
           )

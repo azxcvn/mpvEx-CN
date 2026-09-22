@@ -45,7 +45,6 @@ import app.marlboroadvance.mpvex.R
 import app.marlboroadvance.mpvex.domain.anime4k.Anime4KManager
 import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
 import app.marlboroadvance.mpvex.preferences.DecoderPreferences
-import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.components.PlayerSheet
 import app.marlboroadvance.mpvex.ui.theme.spacing
@@ -67,7 +66,6 @@ fun MoreSheet(
   val advancedPreferences = koinInject<AdvancedPreferences>()
   val decoderPreferences = koinInject<DecoderPreferences>()
   val anime4kManager = koinInject<Anime4KManager>()
-  koinInject<PlayerPreferences>()
   val statisticsPage by advancedPreferences.enabledStatisticsPage.collectAsState()
   
   val enableAnime4K by decoderPreferences.enableAnime4K.collectAsState()
@@ -140,6 +138,8 @@ fun MoreSheet(
           }
         }
       }
+
+
       Text(
         text = stringResource(R.string.player_sheets_stats_page_title),
         style = MaterialTheme.typography.titleMedium,
@@ -229,7 +229,6 @@ fun MoreSheet(
 
                     // Use setPropertyString for runtime changes
                     MPVLib.setPropertyString("glsl-shaders", if (shaderChain.isNotEmpty()) shaderChain else "")
-                    // Restart ambient mode if it was ON (Anime4K reset wiped it)
                     onAnime4KChanged()
                   }
                 }
@@ -274,7 +273,6 @@ fun MoreSheet(
 
                     // Use setPropertyString for runtime changes
                     MPVLib.setPropertyString("glsl-shaders", if (shaderChain.isNotEmpty()) shaderChain else "")
-                    // Restart ambient mode if it was ON (Anime4K reset wiped it)
                     onAnime4KChanged()
                   }
                 }
@@ -348,7 +346,7 @@ fun TimePickerDialog(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(
-                "Quick Presets",
+                "快速预设",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(bottom = 8.dp)
@@ -365,7 +363,7 @@ fun TimePickerDialog(
                             onTimeSelect(minutes * 60)
                             onDismissRequest()
                         },
-                        label = { Text("${minutes}m") },
+                        label = { Text("${minutes}分钟") },
                         leadingIcon = null,
                     )
                 }

@@ -94,21 +94,13 @@ fun PlayerButtonChip(
                 modifier = Modifier.size(24.dp), 
               )
               Text(
-                text = "1:06 • Chapter 1", // TODO: strings
+                text = "1:06 • 第 1 章", // TODO: strings
                 fontSize = 15.sp, 
                 textAlign = TextAlign.Center,
                 lineHeight = 14.sp,
                 modifier = Modifier.padding(start = 8.dp),
               )
             }
-          }
-          PlayerButton.AB_LOOP -> {
-            Text(
-              text = "AB",
-              fontSize = 15.sp,
-              textAlign = TextAlign.Center,
-              fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-            )
           }
           else -> {
             // Default: Icon only

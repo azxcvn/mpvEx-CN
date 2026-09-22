@@ -12,9 +12,10 @@ import app.marlboroadvance.mpvex.repository.MediaFileRepository
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.FoldersPreferences
 import app.marlboroadvance.mpvex.ui.browser.base.BaseBrowserViewModel
+import app.marlboroadvance.mpvex.utils.media.MediaIdentifier
 import app.marlboroadvance.mpvex.utils.media.MediaLibraryEvents
 import app.marlboroadvance.mpvex.utils.media.MetadataRetrieval
-import app.marlboroadvance.mpvex.utils.storage.FolderViewScanner
+import app.marlboroadvance.mpvex.utils.permission.PermissionUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,6 +25,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
@@ -131,6 +133,11 @@ class FolderListViewModel(
 
         // Save to cache for next app launch (save unfiltered list)
         saveFoldersToCache(_allVideoFolders.value)
+
+        // Preload video cache in background so tapping any folder is instant 0ms
+        for (folder in filteredFolders) {
+          app.marlboroadvance.mpvex.repository.VideoStatCache.preload(getApplication(), folder.bucketId)
+        }
       }
     }
   }
@@ -151,6 +158,9 @@ class FolderListViewModel(
           viewModelScope.launch(Dispatchers.IO) {
             _allVideoFolders.value = folders
             _hasCompletedInitialLoad.value = true
+            for (folder in folders) {
+              app.marlboroadvance.mpvex.repository.VideoStatCache.preload(getApplication(), folder.bucketId)
+            }
           }
         }
       } catch (e: Exception) {
@@ -232,7 +242,7 @@ class FolderListViewModel(
 
               // Check if video has been played
               // A video is considered "played" if it has any playback state
-              val playbackState = playbackStateRepository.getVideoDataByTitle(video.displayName)
+              val playbackState = playbackStateRepository.getVideoDataByTitle(MediaIdentifier.forLocalPath(video.path))
               val isUnplayed = playbackState == null
 
               isRecent && isUnplayed
@@ -254,21 +264,11 @@ class FolderListViewModel(
   }
 
   override fun refresh() {
-    Log.d(TAG, "Hard refreshing folder list")
-    
-    // Set loading state
+    Log.d(TAG, "Refreshing folder list")
     _isLoading.value = true
-    
-    // Clear all caches to force fresh data from filesystem
     MediaFileRepository.clearCache()
-    FolderViewScanner.clearCache()
-    
-    // Trigger media scan to ensure MediaStore is up-to-date
-    triggerMediaScan()
-    
-    // Wait for MediaStore to update, then reload
     viewModelScope.launch(Dispatchers.IO) {
-      kotlinx.coroutines.delay(1500) // Give MediaStore time to index
+      triggerMediaScan()
       loadVideoFolders()
     }
   }
@@ -276,7 +276,7 @@ class FolderListViewModel(
   /**
    * Trigger a comprehensive media scan to update MediaStore
    */
-  private fun triggerMediaScan() {
+  private suspend fun triggerMediaScan() = withContext(Dispatchers.IO) {
     try {
       val externalStorage = android.os.Environment.getExternalStorageDirectory()
       
@@ -320,7 +320,7 @@ class FolderListViewModel(
         
         if (!hasExistingData) {
           _isLoading.value = true
-          _scanStatus.value = "Scanning storage..."
+          _scanStatus.value = "正在扫描存储…"
         }
 
         // Capture current state for comparison
@@ -333,16 +333,17 @@ class FolderListViewModel(
             onProgress = { count ->
               // Only show progress if we don't have existing data (silent refresh)
               if (!hasExistingData) {
-                _scanStatus.value = "Found $count folders..."
+                _scanStatus.value = "已找到 $count 个文件夹…"
               }
             }
           )
 
         Log.d(TAG, "Fast scan completed: found ${fastFolders.size} folders")
 
-        // EDGE CASE: Empty result when we had data (permissions revoked?)
-        if (fastFolders.isEmpty() && hasExistingData) {
-             Log.w(TAG, "Scan returned empty when we had data - possible permission issue")
+        // EDGE CASE: Empty result when we had data AND storage permission was actually revoked
+        val hasPermission = PermissionUtils.hasStoragePermission(getApplication<Application>())
+        if (fastFolders.isEmpty() && hasExistingData && !hasPermission) {
+             Log.w(TAG, "Scan returned empty because storage permission was revoked")
              // Keep existing data, don't clear
              _isLoading.value = false
              _scanStatus.value = null
@@ -402,7 +403,7 @@ class FolderListViewModel(
 
         // PHASE 2: Background Enrichment (only if duration chip is enabled)
         _isEnriching.value = true
-        _scanStatus.value = "Processing metadata..."
+        _scanStatus.value = "正在处理元数据…"
         
         val enrichedFolders = MetadataRetrieval.enrichFoldersIfNeeded(
             context = getApplication(),
@@ -410,7 +411,7 @@ class FolderListViewModel(
             browserPreferences = browserPreferences,
             metadataCache = metadataCache,
             onProgress = { processed, total ->
-               _scanStatus.value = "Processing metadata $processed/$total"
+               _scanStatus.value = "正在处理元数据 $processed/$total"
             }
           )
 

@@ -86,7 +86,7 @@ class MPVView(
       property: KProperty<*>,
       value: Int,
     ) {
-      if (value == -1) MPVLib.setPropertyString(name, "no") else MPVLib.setPropertyInt(name, value)
+      if (value <= 0) MPVLib.setPropertyString(name, "no") else MPVLib.setPropertyInt(name, value)
     }
   }
 
@@ -114,6 +114,12 @@ class MPVView(
     if (decoderPreferences.useYUV420P.get()) {
       MPVLib.setOptionString("vf", "format=yuv420p")
     }
+    
+    // Cap demuxer cache for mobile to prevent memory issues
+    val cacheMegs = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O_MR1) 64 else 32
+    MPVLib.setOptionString("demuxer-max-bytes", "${cacheMegs * 1024 * 1024}")
+    MPVLib.setOptionString("demuxer-max-back-bytes", "${cacheMegs * 1024 * 1024}")
+    
     val logLevel = if (advancedPreferences.verboseLogging.get()) "v" else "warn"
     MPVLib.setOptionString("msg-level", "all=$logLevel")
 
@@ -328,9 +334,10 @@ class MPVView(
         return
       }
       
-      // DEFENSIVE CHECK: Ensure mutual exclusion at initialization time
+      // Anime4K requires the legacy GPU path unless gpu-next is running on Vulkan.
       val gpuNextActive = decoderPreferences.gpuNext.get()
-      if (gpuNextActive) {
+      val useVulkan = decoderPreferences.useVulkan.get()
+      if (gpuNextActive && !useVulkan) {
         return  // Abort shader loading to prevent incompatible state
       }
       
@@ -365,10 +372,12 @@ class MPVView(
       val shaderChain = anime4kManager.getShaderChain(mode, quality)
       
       if (shaderChain.isNotEmpty()) {
-        // GPU optimizations for better performance
-        MPVLib.setOptionString("opengl-pbo", "yes")
+        // OpenGL-only tuning should not be pushed onto the Vulkan backend.
+        if (!useVulkan) {
+          MPVLib.setOptionString("opengl-pbo", "yes")
+          MPVLib.setOptionString("opengl-early-flush", "no")
+        }
         MPVLib.setOptionString("vd-lavc-dr", "yes")
-        MPVLib.setOptionString("opengl-early-flush", "no")
         
         // Apply shaders (MUST use setOptionString in initOptions!)
         MPVLib.setOptionString("glsl-shaders", shaderChain)

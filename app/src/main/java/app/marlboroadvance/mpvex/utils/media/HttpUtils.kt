@@ -92,7 +92,7 @@ object HttpUtils {
   }
 
   private fun extractFilenameFromUrlPath(uri: Uri): String {
-    val path = uri.path ?: return uri.host ?: "Network Stream"
+    val path = uri.path ?: return uri.host ?: "网络流"
     val lastSegment = path.substringAfterLast("/")
 
     if (lastSegment.isNotBlank()) {
@@ -100,13 +100,13 @@ object HttpUtils {
         URLDecoder.decode(lastSegment, "UTF-8")
           .substringBefore("?")
           .substringBefore("#")
-          .takeIf { it.isNotBlank() } ?: uri.host ?: "Network Stream"
+          .takeIf { it.isNotBlank() } ?: uri.host ?: "网络流"
       } catch (e: Exception) {
         lastSegment.substringBefore("?").substringBefore("#")
       }
     }
 
-    return uri.host ?: "Network Stream"
+    return uri.host ?: "网络流"
   }
 
   fun isNetworkStream(uri: Uri?): Boolean {

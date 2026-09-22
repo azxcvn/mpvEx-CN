@@ -9,6 +9,7 @@ import org.apache.commons.net.ftp.FTP
 import org.apache.commons.net.ftp.FTPClient
 import org.apache.commons.net.ftp.FTPReply
 import java.io.InputStream
+import java.time.Duration
 
 class FtpClient(private val connection: NetworkConnection) : NetworkClient {
   private var ftpClient: FTPClient? = null
@@ -23,12 +24,12 @@ class FtpClient(private val connection: NetworkConnection) : NetworkClient {
 
         // Increase timeouts to prevent broken pipe
         client.setConnectTimeout(15000) // 15 seconds
-        client.setDataTimeout(60000) // 60 seconds
+        client.setDataTimeout(Duration.ofSeconds(60)) // 60 seconds
         client.setDefaultTimeout(60000) // 60 seconds default
-        client.controlKeepAliveTimeout = 300 // 5 minutes keep-alive
+        client.setControlKeepAliveTimeout(Duration.ofSeconds(300)) // 5 minutes keep-alive
 
         // Enable keep-alive to prevent connection drops
-        client.setControlKeepAliveReplyTimeout(10000) // 10 seconds for keep-alive replies
+        client.setControlKeepAliveReplyTimeout(Duration.ofSeconds(10)) // 10 seconds for keep-alive replies
 
         // Connect to server
         client.connect(connection.host, connection.port)
@@ -36,7 +37,7 @@ class FtpClient(private val connection: NetworkConnection) : NetworkClient {
         val reply = client.replyCode
         if (!FTPReply.isPositiveCompletion(reply)) {
           client.disconnect()
-          return@withContext Result.failure(Exception("FTP server refused connection"))
+          return@withContext Result.failure(Exception("FTP 服务器拒绝连接"))
         }
 
         // Login
@@ -49,7 +50,7 @@ class FtpClient(private val connection: NetworkConnection) : NetworkClient {
 
         if (!success) {
           client.disconnect()
-          return@withContext Result.failure(Exception("Login failed"))
+          return@withContext Result.failure(Exception("登录失败"))
         }
 
         // Set binary mode for file transfers
@@ -106,11 +107,11 @@ class FtpClient(private val connection: NetworkConnection) : NetworkClient {
   override suspend fun listFiles(path: String): Result<List<NetworkFile>> =
     withContext(Dispatchers.IO) {
       try {
-        val client = ftpClient ?: return@withContext Result.failure(Exception("Not connected"))
+        val client = ftpClient ?: return@withContext Result.failure(Exception("尚未连接"))
 
         // Check if connection is still alive
         if (!client.isConnected) {
-          return@withContext Result.failure(Exception("Connection lost"))
+          return@withContext Result.failure(Exception("连接已断开"))
         }
 
         // Send NOOP to check connection health
@@ -120,7 +121,7 @@ class FtpClient(private val connection: NetworkConnection) : NetworkClient {
           // Try to reconnect
           val reconnectResult = connect()
           if (reconnectResult.isFailure) {
-            return@withContext Result.failure(Exception("Connection broken and reconnect failed"))
+            return@withContext Result.failure(Exception("连接中断且重连失败"))
           }
         }
 
@@ -160,14 +161,14 @@ class FtpClient(private val connection: NetworkConnection) : NetworkClient {
   suspend fun getFileSize(path: String): Result<Long> =
     withContext(Dispatchers.IO) {
       try {
-        val client = ftpClient ?: return@withContext Result.failure(Exception("Not connected"))
+        val client = ftpClient ?: return@withContext Result.failure(Exception("尚未连接"))
 
         // Try to get file info
         val files = client.listFiles(path)
         if (files.isNotEmpty() && !files[0].isDirectory) {
           Result.success(files[0].size)
         } else {
-          Result.failure(Exception("File not found or is a directory"))
+          Result.failure(Exception("文件不存在或为目录"))
         }
       } catch (e: Exception) {
         Result.failure(e)
@@ -185,10 +186,10 @@ class FtpClient(private val connection: NetworkConnection) : NetworkClient {
 
         // Increase timeouts to prevent broken pipe during streaming
         streamClient.setConnectTimeout(15000) // 15 seconds
-        streamClient.setDataTimeout(120000) // 120 seconds (2 minutes) for video streaming
+        streamClient.setDataTimeout(Duration.ofSeconds(120)) // 120 seconds (2 minutes) for video streaming
         streamClient.setDefaultTimeout(120000)
-        streamClient.controlKeepAliveTimeout = 600 // 10 minutes keep-alive
-        streamClient.setControlKeepAliveReplyTimeout(15000)
+        streamClient.setControlKeepAliveTimeout(Duration.ofSeconds(600)) // 10 minutes keep-alive
+        streamClient.setControlKeepAliveReplyTimeout(Duration.ofSeconds(15))
 
         // Connect to server
         streamClient.connect(connection.host, connection.port)
@@ -196,7 +197,7 @@ class FtpClient(private val connection: NetworkConnection) : NetworkClient {
         val reply = streamClient.replyCode
         if (!FTPReply.isPositiveCompletion(reply)) {
           streamClient.disconnect()
-          return@withContext Result.failure(Exception("FTP server refused connection (code: $reply)"))
+          return@withContext Result.failure(Exception("FTP 服务器拒绝连接（错误码：$reply）"))
         }
 
         // Login
@@ -209,7 +210,7 @@ class FtpClient(private val connection: NetworkConnection) : NetworkClient {
 
         if (!success) {
           streamClient.disconnect()
-          return@withContext Result.failure(Exception("Login failed"))
+          return@withContext Result.failure(Exception("登录失败"))
         }
 
         // Set binary mode and passive mode
@@ -290,7 +291,7 @@ class FtpClient(private val connection: NetworkConnection) : NetworkClient {
 
               return@withContext Result.success(wrappedStream)
             } else {
-              lastError = "No stream returned"
+              lastError = "未返回数据流"
             }
           } catch (e: Exception) {
             lastError = e.message ?: e.toString()
@@ -303,7 +304,7 @@ class FtpClient(private val connection: NetworkConnection) : NetworkClient {
         } catch (_: Exception) {
         }
 
-        return@withContext Result.failure(Exception("Failed to open FTP file stream. $lastError"))
+        return@withContext Result.failure(Exception("打开 FTP 文件流失败。$lastError"))
       } catch (e: Exception) {
         android.util.Log.e("FtpClient", "Exception getting file stream", e)
         return@withContext Result.failure(e)

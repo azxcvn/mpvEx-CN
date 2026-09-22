@@ -28,7 +28,7 @@ object SubtitleOps : KoinComponent {
         p.contains(".m3u?") || p.contains(".m3u8?") ||
         n.endsWith(".m3u") || n.endsWith(".m3u8")
 
-    val genericName = n.isBlank() || n == "network stream"
+    val genericName = n.isBlank() || n == "网络流"
 
     return looksLikePlaylist || genericName
   }

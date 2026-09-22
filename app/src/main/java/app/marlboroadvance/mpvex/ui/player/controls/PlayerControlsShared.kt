@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AspectRatio
@@ -52,6 +53,7 @@ import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Headset
 import androidx.compose.material.icons.filled.BlurOn
 import androidx.compose.material.icons.outlined.BlurOn
+import androidx.compose.material.icons.outlined.Autorenew
 import androidx.compose.ui.draw.rotate
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -68,6 +70,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -117,10 +122,20 @@ fun RenderPlayerButton(
     PlayerButton.VIDEO_TITLE -> {
       val playlistModeEnabled = viewModel.hasPlaylistSupport()
 
-      val titleInteractionSource = remember { MutableInteractionSource() }
-
       Surface(
-        shape = CircleShape,
+        modifier =
+          Modifier
+            .height(buttonSize)
+            .widthIn(max = 220.dp)
+            .clip(RoundedCornerShape(50))
+            .clickable(
+              enabled = playlistModeEnabled,
+              onClick = {
+                clickEvent()
+                onOpenSheet(Sheets.Playlist)
+              },
+            ),
+        shape = RoundedCornerShape(50),
         color =
           if (hideBackground) {
             Color.Transparent
@@ -141,46 +156,44 @@ fun RenderPlayerButton(
               MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
             )
           },
-        modifier =
-          Modifier
-            .height(buttonSize)
-            .clip(CircleShape)
-            .clickable(
-              interactionSource = titleInteractionSource,
-              indication = ripple(
-                bounded = true,
-              ),
-              enabled = playlistModeEnabled,
-              onClick = {
-                clickEvent()
-                onOpenSheet(Sheets.Playlist)
-              },
-            ),
       ) {
         Row(
           verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
           modifier =
-            Modifier
-              .padding(
-                horizontal = MaterialTheme.spacing.extraSmall,
-                vertical = MaterialTheme.spacing.small,
-              ),
+            Modifier.padding(
+              horizontal = MaterialTheme.spacing.medium,
+              vertical = MaterialTheme.spacing.small,
+            ),
         ) {
+          viewModel.getPlaylistInfo()?.let { playlistInfo ->
+            Text(
+              text = playlistInfo,
+              textAlign = TextAlign.Center,
+              style = MaterialTheme.typography.bodyMedium,
+              maxLines = 1,
+              overflow = TextOverflow.Visible,
+              fontFamily = FontFamily.Monospace,
+              color = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+              text = Typography.bullet.toString(),
+              textAlign = TextAlign.Center,
+              style = MaterialTheme.typography.bodyMedium,
+              maxLines = 1,
+              color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+              overflow = TextOverflow.Clip,
+            )
+          }
           Text(
-            mediaTitle ?: "",
+            text = mediaTitle ?: "",
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             style = MaterialTheme.typography.bodyMedium,
+            fontFamily = FontFamily.Monospace,
+            color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f, fill = false),
           )
-          viewModel.getPlaylistInfo()?.let { playlistInfo ->
-            Text(
-              " • $playlistInfo",
-              maxLines = 1,
-              overflow = TextOverflow.Visible,
-              style = MaterialTheme.typography.bodySmall,
-            )
-          }
         }
       }
     }
@@ -238,6 +251,7 @@ fun RenderPlayerButton(
               text = String.format("%.2fx", playbackSpeed),
               maxLines = 1,
               style = MaterialTheme.typography.bodyMedium,
+              fontFamily = FontFamily.Monospace,
             )
           }
         }
@@ -300,6 +314,7 @@ fun RenderPlayerButton(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             style = MaterialTheme.typography.bodyMedium,
+            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
           )
         }
       }
@@ -489,6 +504,7 @@ fun RenderPlayerButton(
               text = String.format("%.0f%%", currentZoom * 100),
               maxLines = 1,
               style = MaterialTheme.typography.bodyMedium,
+              fontFamily = FontFamily.Monospace,
             )
           }
         }
@@ -730,7 +746,12 @@ fun RenderPlayerButton(
                   Text(
                     text = if (loopA != null) viewModel.formatTimestamp(loopA!!) else "A",
                     style = MaterialTheme.typography.labelLarge,
-                    color = if (loopA != null) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSurface,
+                    fontFamily = FontFamily.Monospace,
+                    color = if (loopA != null) {
+                      MaterialTheme.colorScheme.onTertiaryContainer
+                    } else {
+                      if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface
+                    },
                     modifier = Modifier.padding(horizontal = if (loopA != null) 8.dp else 0.dp),
                   )
                 }
@@ -773,7 +794,12 @@ fun RenderPlayerButton(
                   Text(
                     text = if (loopB != null) viewModel.formatTimestamp(loopB!!) else "B",
                     style = MaterialTheme.typography.labelLarge,
-                    color = if (loopB != null) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSurface,
+                    fontFamily = FontFamily.Monospace,
+                    color = if (loopB != null) {
+                      MaterialTheme.colorScheme.onTertiaryContainer
+                    } else {
+                      if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface
+                    },
                     modifier = Modifier.padding(horizontal = if (loopB != null) 8.dp else 0.dp),
                   )
                 }
@@ -781,7 +807,7 @@ fun RenderPlayerButton(
             }
           }
         } else {
-          // Collapsed: Show "AB" text button
+          // Collapsed: Show Autorenew icon
           Surface(
             shape = CircleShape,
             color = if (hideBackground) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
@@ -792,11 +818,15 @@ fun RenderPlayerButton(
               .clickable(onClick = viewModel::toggleABLoopExpanded),
           ) {
             Box(contentAlignment = Alignment.Center) {
-              Text(
-                text = "A-B",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                color = if (loopA != null && loopB != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+              Icon(
+                imageVector = Icons.Outlined.Autorenew,
+                contentDescription = "A-B 循环",
+                tint = if (loopA != null && loopB != null) {
+                  MaterialTheme.colorScheme.primary
+                } else {
+                  if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface
+                },
+                modifier = Modifier.size(24.dp),
               )
             }
           }
@@ -811,45 +841,6 @@ fun RenderPlayerButton(
         color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.size(buttonSize),
       )
-    }
-
-    PlayerButton.AMBIENT_MODE -> {
-        val isAmbientEnabled by viewModel.isAmbientEnabled.collectAsState()
-        @OptIn(ExperimentalFoundationApi::class)
-        Surface(
-          shape = CircleShape,
-          color = if (hideBackground) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
-          contentColor = if (isAmbientEnabled) {
-               MaterialTheme.colorScheme.primary
-            } else {
-               if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface
-            },
-          border = if (hideBackground) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
-          modifier = Modifier
-            .size(buttonSize)
-            .clip(CircleShape)
-            .combinedClickable(
-              interactionSource = remember { MutableInteractionSource() },
-              indication = ripple(bounded = true),
-              onClick = { 
-                clickEvent()
-                viewModel.toggleAmbientMode() 
-              },
-              onLongClick = {
-                clickEvent()
-                onOpenSheet(Sheets.AmbientConfig)
-              }
-            ),
-        ) {
-          Box(contentAlignment = Alignment.Center) {
-            Icon(
-              imageVector = if (isAmbientEnabled) Icons.Filled.BlurOn else Icons.Outlined.BlurOn,
-              contentDescription = "氛围模式",
-              tint = if (isAmbientEnabled) MaterialTheme.colorScheme.primary else (if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface),
-              modifier = Modifier.size(24.dp)
-            )
-          }
-        }
     }
 
     PlayerButton.NONE -> { /* Do nothing */

@@ -59,9 +59,9 @@ class SmbClient(private val connection: NetworkConnection) : NetworkClient {
             java.net.InetAddress.getByName(connection.host)
           }
         } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
-          return@withContext Result.failure(Exception("Host resolution timeout for ${connection.host}"))
+          return@withContext Result.failure(Exception("解析主机超时：${connection.host}"))
         } catch (e: java.net.UnknownHostException) {
-          return@withContext Result.failure(Exception("Host not found: ${connection.host}"))
+          return@withContext Result.failure(Exception("找不到主机：${connection.host}"))
         }
 
         // Check if the resolved host is reachable
@@ -76,7 +76,7 @@ class SmbClient(private val connection: NetworkConnection) : NetworkClient {
         }
 
         if (!isHostReachable) {
-          return@withContext Result.failure(Exception("Host ${connection.host} is not reachable on the network"))
+          return@withContext Result.failure(Exception("主机 ${connection.host} 在网络中不可达"))
         }
 
         // Use the resolved IP address
@@ -89,14 +89,14 @@ class SmbClient(private val connection: NetworkConnection) : NetworkClient {
 
         if (shareName.isEmpty()) {
           return@withContext Result.failure(
-            Exception("Share name required. Path should be just the share name.\n\nExample: /Media or /Public\n\nDo not include folders, navigate to them after connecting."),
+            Exception("缺少共享名称。路径应仅填写共享名称。\n\n示例：/Media 或 /Public\n\n请勿包含文件夹，连接后再进入文件夹。"),
           )
         }
 
         // Reject paths with subfolders
         if (shareName.contains('/')) {
           return@withContext Result.failure(
-            Exception("Path should be ONLY the share name, not a folder path.\n\nExample: Use /Media, not /Media/Movies\n\nYou can navigate to folders after connecting."),
+            Exception("路径只能填写共享名称，不能是文件夹路径。\n\n示例：使用 /Media，而不是 /Media/Movies\n\n连接后可以进入文件夹。"),
           )
         }
 
@@ -123,7 +123,7 @@ class SmbClient(private val connection: NetworkConnection) : NetworkClient {
 
             // Test connection by connecting to the share
             val diskShare = session!!.connectShare(shareName) as? DiskShare
-              ?: return@withTimeout Result.failure<Unit>(Exception("Share '$shareName' is not a disk share"))
+              ?: return@withTimeout Result.failure<Unit>(Exception("共享“${shareName}”不是磁盘共享"))
 
             try {
               // Test access by listing the share root
@@ -137,20 +137,20 @@ class SmbClient(private val connection: NetworkConnection) : NetworkClient {
               if (e.message?.contains("STATUS_ACCESS_DENIED", ignoreCase = true) == true ||
                 e.message?.contains("Access is denied", ignoreCase = true) == true
               ) {
-                Result.failure<Unit>(Exception("Authentication failed. Check username and password."))
+                Result.failure<Unit>(Exception("身份验证失败，请检查用户名和密码。"))
               } else if (e.message?.contains("STATUS_OBJECT_NAME_NOT_FOUND", ignoreCase = true) == true ||
                 e.message?.contains("does not exist", ignoreCase = true) == true
               ) {
-                Result.failure<Unit>(Exception("Share does not exist"))
+                Result.failure<Unit>(Exception("共享不存在"))
               } else {
                 Result.failure<Unit>(Exception("Connection failed: ${e.message}"))
               }
             }
           }
         } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
-          Result.failure(Exception("Connection timeout. Server not responding."))
+          Result.failure(Exception("连接超时，服务器无响应。"))
         } catch (e: Exception) {
-          Result.failure(Exception("Connection failed: ${e.message ?: "Unknown error"}"))
+          Result.failure(Exception("连接失败：${e.message ?: "未知错误"}"))
         }
 
         connectionResult
@@ -193,11 +193,11 @@ class SmbClient(private val connection: NetworkConnection) : NetworkClient {
           disconnect()
           val reconnectResult = connect()
           if (reconnectResult.isFailure) {
-            return@withContext Result.failure(Exception("Failed to reconnect: ${reconnectResult.exceptionOrNull()?.message}"))
+            return@withContext Result.failure(Exception("重新连接失败：${reconnectResult.exceptionOrNull()?.message}"))
           }
         }
 
-        val sess = session ?: return@withContext Result.failure(Exception("Not connected"))
+        val sess = session ?: return@withContext Result.failure(Exception("尚未连接"))
 
         android.util.Log.d("SmbClient", "=== listFiles called ===")
         android.util.Log.d("SmbClient", "  Input path: '$path'")
@@ -256,10 +256,10 @@ class SmbClient(private val connection: NetworkConnection) : NetworkClient {
 
         val diskShare = try {
           sess.connectShare(shareName) as? DiskShare
-            ?: return@withContext Result.failure(Exception("Share '$shareName' is not a disk share"))
+            ?: return@withContext Result.failure(Exception("共享“${shareName}”不是磁盘共享"))
         } catch (e: Exception) {
           android.util.Log.e("SmbClient", "Failed to connect to share: ${e.message}", e)
-          return@withContext Result.failure(Exception("Failed to connect to share: ${e.message}"))
+          return@withContext Result.failure(Exception("连接共享失败：${e.message}"))
         }
 
         try {
@@ -270,7 +270,7 @@ class SmbClient(private val connection: NetworkConnection) : NetworkClient {
             }
           } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
             diskShare.close()
-            return@withContext Result.failure(Exception("Operation timed out. The server may be slow or unresponsive."))
+            return@withContext Result.failure(Exception("操作超时，服务器可能较慢或无响应。"))
           }
 
           android.util.Log.d("SmbClient", "  Listed ${rawFiles.size} items")
@@ -326,7 +326,7 @@ class SmbClient(private val connection: NetworkConnection) : NetworkClient {
           Result.success(files)
         } catch (e: Exception) {
           diskShare.close()
-          Result.failure(Exception("Failed to list files: ${e.message}"))
+          Result.failure(Exception("列出文件失败：${e.message}"))
         }
       } catch (e: Exception) {
         Result.failure(e)
@@ -336,7 +336,7 @@ class SmbClient(private val connection: NetworkConnection) : NetworkClient {
   override suspend fun getFileStream(path: String): Result<InputStream> =
     withContext(Dispatchers.IO) {
       try {
-        val sess = session ?: return@withContext Result.failure(Exception("Not connected"))
+        val sess = session ?: return@withContext Result.failure(Exception("尚未连接"))
 
         // Parse the SMB path to get relative path within share
         val relativePath = when {
@@ -362,7 +362,7 @@ class SmbClient(private val connection: NetworkConnection) : NetworkClient {
         }
 
         val diskShare = sess.connectShare(shareName) as? DiskShare
-          ?: return@withContext Result.failure(Exception("Share '$shareName' is not a disk share"))
+          ?: return@withContext Result.failure(Exception("共享“${shareName}”不是磁盘共享"))
 
         try {
           val file = diskShare.openFile(
@@ -402,7 +402,7 @@ class SmbClient(private val connection: NetworkConnection) : NetworkClient {
           Result.success(wrappedStream)
         } catch (e: Exception) {
           diskShare.close()
-          Result.failure(Exception("Failed to open file: ${e.message}"))
+          Result.failure(Exception("打开文件失败：${e.message}"))
         }
       } catch (e: Exception) {
         Result.failure(e)

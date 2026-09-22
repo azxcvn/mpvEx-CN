@@ -179,7 +179,7 @@ object CopyPasteOps {
         Log.e(TAG, "Copy operation failed: ${e.message}", e)
         _operationProgress.value =
           _operationProgress.value.copy(
-            error = e.message ?: "Unknown error occurred",
+            error = e.message ?: "发生未知错误",
           )
         Result.failure(e)
       }
@@ -260,7 +260,7 @@ object CopyPasteOps {
         Log.e(TAG, "Move operation failed: ${e.message}", e)
         _operationProgress.value =
           _operationProgress.value.copy(
-            error = e.message ?: "Unknown error occurred",
+            error = e.message ?: "发生未知错误",
           )
         Result.failure(e)
       }
@@ -367,7 +367,7 @@ object CopyPasteOps {
         return candidate
       }
     }
-    throw IOException("Could not generate unique filename after $MAX_FILENAME_ATTEMPTS attempts")
+    throw IOException("已尝试 $MAX_FILENAME_ATTEMPTS 次，仍无法生成唯一的文件名")
   }
 
   private fun performTreeCopyOperation(
@@ -377,7 +377,7 @@ object CopyPasteOps {
   ): List<Uri> {
     val destinationRoot =
       DocumentFile.fromTreeUri(context, destinationTreeUri)
-        ?: throw IOException("Unable to access destination folder")
+        ?: throw IOException("无法访问目标文件夹")
 
     val totalBytes = videos.sumOf { it.size.coerceAtLeast(0L) }
     val copiedUris = mutableListOf<Uri>()
@@ -395,7 +395,7 @@ object CopyPasteOps {
       val mime = video.mimeType.ifBlank { "video/*" }
       val destFile =
         destinationRoot.createFile(mime, uniqueName)
-          ?: throw IOException("Failed to create destination file for ${video.displayName}")
+          ?: throw IOException("无法为 ${video.displayName} 创建目标文件")
 
       updateProgress(
         currentFile = video.displayName,
@@ -409,11 +409,11 @@ object CopyPasteOps {
       try {
         context.contentResolver.openInputStream(video.uri).use { input ->
           if (input == null) {
-            throw IOException("Could not open source stream for ${video.displayName}")
+            throw IOException("无法打开 ${video.displayName} 的源数据流")
           }
           context.contentResolver.openOutputStream(destFile.uri, "w").use { output ->
             if (output == null) {
-              throw IOException("Could not open destination stream for ${video.displayName}")
+              throw IOException("无法打开 ${video.displayName} 的目标数据流")
             }
 
             val buffer = ByteArray(BUFFER_SIZE)
@@ -506,7 +506,7 @@ object CopyPasteOps {
       if (!exists) return candidate
     }
 
-    throw IOException("Could not generate unique filename after $MAX_FILENAME_ATTEMPTS attempts")
+    throw IOException("已尝试 $MAX_FILENAME_ATTEMPTS 次，仍无法生成唯一的文件名")
   }
 
   private fun performScopedCopyOperation(
@@ -518,7 +518,7 @@ object CopyPasteOps {
 
     val relativePath =
       toMediaStoreRelativePath(destinationPath)
-        ?: throw IOException("Destination must be in primary shared storage for scoped copy")
+        ?: throw IOException("目标位置必须位于主共享存储中才能使用受保护存储复制")
 
     val validVideos =
       videos.filter { video ->
@@ -532,7 +532,7 @@ object CopyPasteOps {
       }
 
     if (validVideos.isEmpty()) {
-      throw IllegalArgumentException("No valid files to copy")
+      throw IllegalArgumentException("没有可复制的有效文件")
     }
 
     val totalBytes = validVideos.sumOf { it.size.coerceAtLeast(0L) }
@@ -569,16 +569,16 @@ object CopyPasteOps {
 
       val insertedUri =
         context.contentResolver.insert(collection, values)
-          ?: throw IOException("Failed to create destination item for ${video.displayName}")
+          ?: throw IOException("无法为 ${video.displayName} 创建目标项目")
 
       try {
         context.contentResolver.openInputStream(video.uri).use { input ->
           if (input == null) {
-            throw IOException("Could not open source stream for ${video.displayName}")
+            throw IOException("无法打开 ${video.displayName} 的源数据流")
           }
           context.contentResolver.openOutputStream(insertedUri, "w").use { output ->
             if (output == null) {
-              throw IOException("Could not open destination stream for ${video.displayName}")
+              throw IOException("无法打开 ${video.displayName} 的目标数据流")
             }
 
             val buffer = ByteArray(BUFFER_SIZE)
@@ -645,7 +645,7 @@ object CopyPasteOps {
     if (contentUrisToDelete.isNotEmpty()) {
       val granted = PermissionUtils.requestScopedDeleteAccess(context, contentUrisToDelete)
       if (!granted) {
-        throw IOException("Move cancelled: source delete permission denied")
+        throw IOException("移动已取消：源文件删除权限被拒绝")
       }
     }
 
@@ -663,7 +663,7 @@ object CopyPasteOps {
         }
 
       if (!deleted) {
-        throw IOException("Failed to delete source after move: ${video.displayName}")
+        throw IOException("移动后删除源文件失败：${video.displayName}")
       }
 
       val newPath = movedPaths.getOrNull(index)
@@ -716,7 +716,7 @@ object CopyPasteOps {
       if (!hasSpace) {
         Log.w(
           TAG,
-          "Insufficient disk space. Required: ${formatBytes(requiredBytes)}, Available: ${formatBytes(availableBytes)}",
+          "磁盘空间不足。需要：${formatBytes(requiredBytes)}，可用：${formatBytes(availableBytes)}",
         )
       }
 
@@ -840,7 +840,7 @@ object CopyPasteOps {
 
       // Verify move success
       if (!finalDestFile.exists()) {
-        throw IOException("Move failed: destination file not found for ${video.displayName}")
+        throw IOException("移动失败：未找到 ${video.displayName} 的目标文件")
       }
 
       movedFilePaths.add(finalDestFile.absolutePath)
@@ -912,7 +912,7 @@ object CopyPasteOps {
     // Verify copy
     if (!destination.exists() || destination.length() != source.length()) {
       destination.delete() // Clean up partial copy
-      throw IOException("Copy verification failed for: $fileName")
+      throw IOException("复制校验失败：$fileName")
     }
 
     // Delete source
@@ -933,11 +933,11 @@ object CopyPasteOps {
     onProgress: (Float) -> Unit,
   ) {
     if (!source.exists()) {
-      throw IOException("Source file does not exist: ${source.path}")
+      throw IOException("源文件不存在：${source.path}")
     }
 
     if (!source.canRead()) {
-      throw IOException("Source file is not readable: ${source.path}")
+      throw IOException("源文件不可读：${source.path}")
     }
 
     try {
@@ -989,7 +989,7 @@ object CopyPasteOps {
       }
     }
 
-    throw IOException("Could not generate unique filename after $MAX_FILENAME_ATTEMPTS attempts")
+    throw IOException("已尝试 $MAX_FILENAME_ATTEMPTS 次，仍无法生成唯一的文件名")
   }
 
   // ============================================================================
@@ -1023,9 +1023,9 @@ object CopyPasteOps {
       _operationProgress.value =
         _operationProgress.value.copy(
           isCancelled = true,
-          error = "Operation cancelled by user",
+          error = "操作已被用户取消",
         )
-      throw IOException("Operation cancelled by user")
+      throw IOException("操作已被用户取消")
     }
   }
 

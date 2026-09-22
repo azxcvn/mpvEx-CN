@@ -32,7 +32,6 @@ fun SubtitlesSheet(
   onOpenSubtitleSettings: () -> Unit,
   onOpenSubtitleDelay: () -> Unit,
   onRemoveSubtitle: (Int) -> Unit,
-  onOpenOnlineSearch: () -> Unit,
   onDismissRequest: () -> Unit,
   modifier: Modifier = Modifier
 ) {
@@ -44,10 +43,10 @@ fun SubtitlesSheet(
     val external = tracks.filter { it.external == true }
     
     if (internal.isNotEmpty() || external.isNotEmpty()) {
-        list.add(SubtitleItem.Header(if (internal.isNotEmpty()) "Embedded Subtitles" else "Local Subtitles"))
+        list.add(SubtitleItem.Header(if (internal.isNotEmpty()) "内嵌字幕" else "本地字幕"))
         list.addAll(internal.map { SubtitleItem.Track(it) })
         if (internal.isNotEmpty() && external.isNotEmpty()) {
-          list.add(SubtitleItem.Header("External Subtitles"))
+          list.add(SubtitleItem.Header("外部字幕"))
         }
         list.addAll(external.map { SubtitleItem.Track(it) })
     }
@@ -63,9 +62,6 @@ fun SubtitlesSheet(
         stringResource(R.string.player_sheets_add_ext_sub),
         onAddSubtitle,
         actions = {
-          IconButton(onClick = onOpenOnlineSearch) {
-            Icon(Icons.Default.Search, null)
-          }
           IconButton(onClick = onOpenSubtitleSettings) {
             Icon(Icons.Default.Palette, null)
           }

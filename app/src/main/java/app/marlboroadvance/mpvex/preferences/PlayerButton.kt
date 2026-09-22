@@ -17,13 +17,13 @@ import androidx.compose.material.icons.outlined.Subtitles
 import androidx.compose.material.icons.outlined.Title
 import androidx.compose.material.icons.outlined.Flip
 import androidx.compose.material.icons.outlined.Repeat
+import androidx.compose.material.icons.outlined.Autorenew
 import androidx.compose.material.icons.outlined.ZoomIn
 import androidx.compose.material.icons.outlined.FastForward
 import androidx.compose.material.icons.outlined.Shuffle
 import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.Headset
-import androidx.compose.material.icons.outlined.BlurOn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
 
@@ -53,10 +53,9 @@ enum class PlayerButton(
   SHUFFLE(Icons.Outlined.Shuffle),
   MIRROR(Icons.Outlined.Flip),
   VERTICAL_FLIP(Icons.Outlined.Flip),
-  AB_LOOP(Icons.AutoMirrored.Outlined.Segment),
+  AB_LOOP(Icons.Outlined.Autorenew),
   CUSTOM_SKIP(Icons.Outlined.FastForward),
   BACKGROUND_PLAYBACK(Icons.Outlined.Headset),
-  AMBIENT_MODE(Icons.Outlined.BlurOn),
   NONE(Icons.Outlined.Bookmarks),
 }
 
@@ -100,6 +99,5 @@ fun getPlayerButtonLabel(button: PlayerButton): String =
     PlayerButton.AB_LOOP -> "A-B 循环"
     PlayerButton.CUSTOM_SKIP -> "自定义跳转"
     PlayerButton.BACKGROUND_PLAYBACK -> "后台播放"
-    PlayerButton.AMBIENT_MODE -> "氛围模式"
     PlayerButton.NONE -> "无"
   }

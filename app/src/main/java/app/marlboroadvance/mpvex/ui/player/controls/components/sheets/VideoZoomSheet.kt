@@ -175,7 +175,7 @@ private fun ZoomVideoSheet(
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
-          text = "Pan & Zoom",
+          text = "平移与缩放",
           style = MaterialTheme.typography.bodyMedium,
           color = if (panAndZoomEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
         )

@@ -1,5 +1,6 @@
 <resources>
     <string name="app_name" translatable="false">mpvExCN</string>
+    <string name="mediainfo_activity_title">媒体信息</string>
 
     <string name="generic_reset">重置</string>
     <string name="generic_share">分享</string>
@@ -206,21 +207,11 @@
     <string name="pref_decoder_vulkan_not_supported">不支持（需要 Android 13+ 和 Vulkan 1.3）</string>
 
     <string name="pref_subtitles">字幕</string>
-    <string name="pref_subtitles_summary">首选语言、字体</string>
+    <string name="pref_subtitles_summary">首选语言、字体和样式</string>
     <string name="pref_preferred_languages">首选语言</string>
     <string name="pref_subtitles_fonts_dir">字体目录</string>
     <string name="pref_subtitles_autoload_title">自动加载字幕</string>
     <string name="pref_subtitles_autoload_summary">自动加载同名的外部字幕。</string>
-    <string name="pref_subtitle_search_title">在线字幕搜索</string>
-    <string name="pref_subtitle_search_summary">从在线来源搜索和下载字幕</string>
-    <string name="pref_subtitles_save_location">字幕保存位置</string>
-    <string name="pref_subtitles_search_online">在线字幕搜索…</string>
-    <string name="pref_subtitles_subdl_languages">字幕语言</string>
-    <string name="all_languages">全部（选择性筛选）</string>
-    <string name="pref_subtitles_clear_downloads">清除已下载的字幕</string>
-    <string name="pref_subtitles_clear_downloads_summary">删除当前保存位置中的所有文件</string>
-    <string name="pref_subtitles_clear_downloads_confirmation">确定要删除所有已下载的字幕吗？此操作无法撤销。</string>
-    <string name="toast_subtitles_cleared">字幕下载已清除</string>
 
     <string name="pref_audio">音频</string>
     <string name="pref_audio_summary">首选语言、音频声道、音高校正</string>
@@ -386,6 +377,7 @@
     <string name="timer_remaining">剩余 %s</string>
 
     <string name="toast_sleep_timer_ended">睡眠定时器已结束</string>
+    <string name="toast_file_no_longer_exists">文件已不存在</string>
 
     <string name="volume_slider_absolute_value" translatable="false">%d</string>
 
@@ -498,7 +490,7 @@
     <string name="invalid_subtitle_format">无效的字幕文件格式</string>
     <string name="subtitle_added">%s 已添加</string>
     <string name="failed_load_subtitle">无法加载字幕</string>
-    <string name="remove_from_playlist">从播放列表中移除 %d 个 %s？</string>
+    <string name="remove_from_playlist">从播放列表中移除 %1$d 个 %2$s？</string>
     <string name="remove_playlist_items_confirm">所选的 %2$s 将从此播放列表中移除。原始 %3$s 不会被删除。</string>
 
     <!-- Hardcoded strings in Kotlin code - Search & Placeholders -->

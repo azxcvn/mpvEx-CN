@@ -21,8 +21,6 @@ import app.marlboroadvance.mpvex.preferences.AudioPreferences
 import app.marlboroadvance.mpvex.preferences.GesturePreferences
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import app.marlboroadvance.mpvex.preferences.SubtitlesPreferences
-import app.marlboroadvance.mpvex.repository.wyzie.WyzieSearchRepository
-import app.marlboroadvance.mpvex.repository.wyzie.WyzieSubtitle
 import app.marlboroadvance.mpvex.utils.media.ChecksumUtils
 import app.marlboroadvance.mpvex.utils.media.MediaInfoParser
 import `is`.xyz.mpv.MPVLib
@@ -38,13 +36,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
@@ -52,9 +48,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
-import app.marlboroadvance.mpvex.ui.preferences.CustomButton
 import java.io.File
-import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
 import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
 import kotlin.properties.ReadOnlyProperty
@@ -94,55 +88,10 @@ class PlayerViewModel(
   private val advancedPreferences: AdvancedPreferences by inject()
   private val json: Json by inject()
   private val playbackStateDao: app.marlboroadvance.mpvex.database.dao.PlaybackStateDao by inject()
-  private val wyzieRepository: WyzieSearchRepository by inject()
 
   // Playlist items for the playlist sheet
   private val _playlistItems = kotlinx.coroutines.flow.MutableStateFlow<List<app.marlboroadvance.mpvex.ui.player.controls.components.sheets.PlaylistItem>>(emptyList())
   val playlistItems: kotlinx.coroutines.flow.StateFlow<List<app.marlboroadvance.mpvex.ui.player.controls.components.sheets.PlaylistItem>> = _playlistItems.asStateFlow()
-
-  // Wyzie Search Results
-  private val _wyzieSearchResults = MutableStateFlow<List<WyzieSubtitle>>(emptyList())
-  val wyzieSearchResults: StateFlow<List<WyzieSubtitle>> = _wyzieSearchResults.asStateFlow()
-
-  private val _isDownloadingSub = MutableStateFlow(false)
-  val isDownloadingSub: StateFlow<Boolean> = _isDownloadingSub.asStateFlow()
-
-  private val _isSearchingSub = MutableStateFlow(false)
-  val isSearchingSub: StateFlow<Boolean> = _isSearchingSub.asStateFlow()
-
-  private val _isOnlineSectionExpanded = MutableStateFlow(true)
-  val isOnlineSectionExpanded: StateFlow<Boolean> = _isOnlineSectionExpanded.asStateFlow()
-
-  // Media Search / Autocomplete
-  private val _mediaSearchResults = MutableStateFlow<List<app.marlboroadvance.mpvex.repository.wyzie.WyzieTmdbResult>>(emptyList())
-  val mediaSearchResults: StateFlow<List<app.marlboroadvance.mpvex.repository.wyzie.WyzieTmdbResult>> = _mediaSearchResults.asStateFlow()
-
-  private val _isSearchingMedia = MutableStateFlow(false)
-  val isSearchingMedia: StateFlow<Boolean> = _isSearchingMedia.asStateFlow()
-
-  // TV Show Details
-  private val _selectedTvShow = MutableStateFlow<app.marlboroadvance.mpvex.repository.wyzie.WyzieTvShowDetails?>(null)
-  val selectedTvShow: StateFlow<app.marlboroadvance.mpvex.repository.wyzie.WyzieTvShowDetails?> = _selectedTvShow.asStateFlow()
-
-  private val _isFetchingTvDetails = MutableStateFlow(false)
-  val isFetchingTvDetails: StateFlow<Boolean> = _isFetchingTvDetails.asStateFlow()
-
-  // Season / Episode
-  private val _selectedSeason = MutableStateFlow<app.marlboroadvance.mpvex.repository.wyzie.WyzieSeason?>(null)
-  val selectedSeason: StateFlow<app.marlboroadvance.mpvex.repository.wyzie.WyzieSeason?> = _selectedSeason.asStateFlow()
-
-  private val _seasonEpisodes = MutableStateFlow<List<app.marlboroadvance.mpvex.repository.wyzie.WyzieEpisode>>(emptyList())
-  val seasonEpisodes: StateFlow<List<app.marlboroadvance.mpvex.repository.wyzie.WyzieEpisode>> = _seasonEpisodes.asStateFlow()
-
-  private val _isFetchingEpisodes = MutableStateFlow(false)
-  val isFetchingEpisodes: StateFlow<Boolean> = _isFetchingEpisodes.asStateFlow()
-
-  private val _selectedEpisode = MutableStateFlow<app.marlboroadvance.mpvex.repository.wyzie.WyzieEpisode?>(null)
-  val selectedEpisode: StateFlow<app.marlboroadvance.mpvex.repository.wyzie.WyzieEpisode?> = _selectedEpisode.asStateFlow()
-
-  fun toggleOnlineSection() {
-      _isOnlineSectionExpanded.value = !_isOnlineSectionExpanded.value
-  }
 
   // Cache for video metadata to avoid re-extracting — LruCache handles bounds + thread-safety
   private val metadataCache = object : android.util.LruCache<String, Pair<String, String>>(100) {}
@@ -175,7 +124,7 @@ class PlayerViewModel(
         if (time != null) {
           _precisePosition.value = time.toFloat()
         }
-        delay(16) // ~60fps updates
+        delay(42) // ~24fps updates
       }
     }
 
@@ -189,6 +138,7 @@ class PlayerViewModel(
       }
     }
   }
+
   val maxVolume = host.audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
 
   val subtitleTracks: StateFlow<List<TrackNode>> =
@@ -266,12 +216,12 @@ class PlayerViewModel(
   private val _videoZoom = MutableStateFlow(0f)
   val videoZoom: StateFlow<Float> = _videoZoom.asStateFlow()
 
-  // Video aspect ratio (not persisted, resets to Fit for each video)
-  private val _videoAspect = MutableStateFlow(VideoAspect.Fit)
+  // Video aspect ratio (now persisted via preferences)
+  private val _videoAspect = MutableStateFlow(playerPreferences.defaultVideoAspect.get())
   val videoAspect: StateFlow<VideoAspect> = _videoAspect.asStateFlow()
 
   // Current aspect ratio value (for custom ratios and tracking)
-  private val _currentAspectRatio = MutableStateFlow(-1.0)
+  private val _currentAspectRatio = MutableStateFlow(playerPreferences.defaultCustomAspectRatio.get())
   val currentAspectRatio: StateFlow<Double> = _currentAspectRatio.asStateFlow()
 
   // Timer
@@ -315,46 +265,6 @@ class PlayerViewModel(
   private val _isVerticalFlipped = MutableStateFlow(false)
   val isVerticalFlipped: StateFlow<Boolean> = _isVerticalFlipped.asStateFlow()
 
-  // ==================== Ambience Mode ======================================
-  private val _isAmbientEnabled = MutableStateFlow(playerPreferences.isAmbientEnabled.get())
-  val isAmbientEnabled: StateFlow<Boolean> = _isAmbientEnabled.asStateFlow()
-
-  private val _ambientBlurSamples = MutableStateFlow(playerPreferences.ambientBlurSamples.get())
-  val ambientBlurSamples: StateFlow<Int> = _ambientBlurSamples.asStateFlow()
-
-  private val _ambientMaxRadius = MutableStateFlow(playerPreferences.ambientMaxRadius.get())
-  val ambientMaxRadius: StateFlow<Float> = _ambientMaxRadius.asStateFlow()
-
-  private val _ambientGlowIntensity = MutableStateFlow(playerPreferences.ambientGlowIntensity.get())
-  val ambientGlowIntensity: StateFlow<Float> = _ambientGlowIntensity.asStateFlow()
-
-  private val _ambientSatBoost = MutableStateFlow(playerPreferences.ambientSatBoost.get())
-  val ambientSatBoost: StateFlow<Float> = _ambientSatBoost.asStateFlow()
-
-  private val _ambientDitherNoise = MutableStateFlow(playerPreferences.ambientDitherNoise.get())
-  val ambientDitherNoise: StateFlow<Float> = _ambientDitherNoise.asStateFlow()
-
-  private val _ambientBezelDepth = MutableStateFlow(playerPreferences.ambientBezelDepth.get())
-  val ambientBezelDepth: StateFlow<Float> = _ambientBezelDepth.asStateFlow()
-
-  private val _ambientVignetteStrength = MutableStateFlow(playerPreferences.ambientVignetteStrength.get())
-  val ambientVignetteStrength: StateFlow<Float> = _ambientVignetteStrength.asStateFlow()
-
-  private val _ambientWarmth = MutableStateFlow(playerPreferences.ambientWarmth.get())
-  val ambientWarmth: StateFlow<Float> = _ambientWarmth.asStateFlow()
-
-  private val _ambientFadeCurve = MutableStateFlow(playerPreferences.ambientFadeCurve.get())
-  val ambientFadeCurve: StateFlow<Float> = _ambientFadeCurve.asStateFlow()
-
-  private val _ambientOpacity = MutableStateFlow(playerPreferences.ambientOpacity.get())
-  val ambientOpacity: StateFlow<Float> = _ambientOpacity.asStateFlow()
-
-  private var lastAmbientScaleX = -1.0
-  private var lastAmbientScaleY = -1.0
-  private var ambientDebounceJob: kotlinx.coroutines.Job? = null
-  private var ambientShaderSeq = 0
-  private var ambientShaderFile: java.io.File? = null
-
   init {
     // Track selection is now handled by TrackSelector in PlayerActivity
     
@@ -390,224 +300,19 @@ class PlayerViewModel(
         Triple(duration, loopA, loopB)
       }.collect { (duration, loopA, loopB) ->
         val videoDuration = duration ?: 0
-        // Use precise seeking for videos shorter than 2 minutes, or if AB loop is active, or if preference is enabled
-        val isLoopActive = loopA != null || loopB != null
-        val shouldUsePreciseSeeking = playerPreferences.usePreciseSeeking.get() || videoDuration < 120 || isLoopActive
         
-        // Update hr-seek settings dynamically
-        MPVLib.setPropertyString("hr-seek", if (shouldUsePreciseSeeking) "yes" else "no")
-        MPVLib.setPropertyString("hr-seek-framedrop", if (shouldUsePreciseSeeking) "no" else "yes")
-      }
-    }
-    
-    
-    // Refresh custom buttons when Lua scripts are enabled/disabled or configuration changes
-    viewModelScope.launch {
-      combine(
-        advancedPreferences.enableLuaScripts.changes().drop(1),
-        playerPreferences.customButtons.changes().drop(1)
-      ) { _, _ -> }.collect {
-        setupCustomButtons()
-      }
-    }
-
-    setupCustomButtons()
-  }
-
-  // ==================== Custom Buttons ====================
-
-  data class CustomButtonState(
-    val id: String,
-    val label: String,
-    val isLeft: Boolean,
-  )
-
-  private val _customButtons = MutableStateFlow<List<CustomButtonState>>(emptyList())
-  val customButtons: StateFlow<List<CustomButtonState>> = _customButtons.asStateFlow()
-  private var customButtonsSetupJob: Job? = null
-  private val customButtonsLoadMutex = Mutex()
-  @Volatile
-  private var isMpvReadyForCustomButtons = false
-  @Volatile
-  private var customButtonsScriptPath: String? = null
-  private val customButtonsLoadedFlagProperty = "user-data/mpvex/custombuttons_loaded"
-
-  fun onMpvCoreInitialized() {
-    isMpvReadyForCustomButtons = true
-    reloadCustomButtonsScript("mpv_core_initialized")
-  }
-
-  private fun setupCustomButtons() {
-    customButtonsSetupJob?.cancel()
-    customButtonsSetupJob = viewModelScope.launch(Dispatchers.IO) {
-      try {
-        val buttons = mutableListOf<CustomButtonState>()
-        if (!advancedPreferences.enableLuaScripts.get()) {
-          _customButtons.value = buttons
-          customButtonsScriptPath = null
-          runCatching { MPVLib.setPropertyString(customButtonsLoadedFlagProperty, "0") }
-          return@launch
-        }
-
-        val scriptContent = buildString {
-          val jsonString = playerPreferences.customButtons.get()
-          if (jsonString.isNotBlank()) {
-            try {
-               // Try new slot-based format first
-               val slotsData = json.decodeFromString<app.marlboroadvance.mpvex.ui.preferences.CustomButtonSlots>(jsonString)
-               slotsData.slots.forEachIndexed { index, btn ->
-                 if (btn != null && btn.enabled) {   // skip disabled buttons
-                   val safeId = btn.id.replace("-", "_")
-                   val isLeft = index < 4 // Slots 0-3 are left, 4-7 are right
-                   processButton(btn.id, safeId, btn.title, btn.content, btn.longPressContent, btn.onStartup, isLeft, buttons)
-                 }
-               }
-            } catch (e: Exception) {
-               // Fallback to old format for backward compatibility
-               try {
-                 val customButtonsList = json.decodeFromString<List<app.marlboroadvance.mpvex.ui.preferences.CustomButton>>(jsonString)
-                 customButtonsList.forEachIndexed { index, btn ->
-                   val safeId = btn.id.replace("-", "_")
-                   val isLeft = index < 4 // First 4 are left buttons, rest are right
-                   processButton(btn.id, safeId, btn.title, btn.content, btn.longPressContent, btn.onStartup, isLeft, buttons)
-                 }
-               } catch (e2: Exception) {
-                 e2.printStackTrace()
-               }
-            }
-          }
-
-          if (buttons.isNotEmpty()) {
-            append("mp.set_property_native('$customButtonsLoadedFlagProperty', '1')\n")
-          }
-        }
-
-        _customButtons.value = buttons
-
-        if (scriptContent.isNotEmpty()) {
-          val scriptsDir = File(host.context.filesDir, "scripts")
-          if (!scriptsDir.exists()) scriptsDir.mkdirs()
+        // Only override hr-seek when duration is actually known and stable
+        if (videoDuration > 0) {
+          // Use precise seeking for videos shorter than 2 minutes, or if AB loop is active, or if preference is enabled
+          val isLoopActive = loopA != null || loopB != null
+          val shouldUsePreciseSeeking = playerPreferences.usePreciseSeeking.get() || videoDuration < 120 || isLoopActive
           
-          val file = File(scriptsDir, "custombuttons.lua")
-          file.writeText(scriptContent)
-          customButtonsScriptPath = file.absolutePath
-
-          if (isMpvReadyForCustomButtons) {
-            val loaded = loadCustomButtonsScript(file)
-            if (!loaded) {
-              android.util.Log.w("PlayerViewModel", "Failed to load custombuttons.lua")
-            }
-          } else {
-            android.util.Log.d("PlayerViewModel", "Deferring custombuttons.lua load until MPV is ready")
-          }
-        } else {
-          customButtonsScriptPath = null
-          runCatching { MPVLib.setPropertyString(customButtonsLoadedFlagProperty, "0") }
-        }
-      } catch (e: Exception) {
-        android.util.Log.e("PlayerViewModel", "Error setting up custom buttons", e)
-      }
-    }
-  }
-
-  private fun reloadCustomButtonsScript(reason: String) {
-    if (!isMpvReadyForCustomButtons) return
-
-    viewModelScope.launch(Dispatchers.IO) {
-      customButtonsLoadMutex.withLock {
-        if (!advancedPreferences.enableLuaScripts.get()) return@withLock
-
-        val scriptPath = customButtonsScriptPath
-        if (scriptPath.isNullOrBlank()) return@withLock
-        if (isCustomButtonsScriptLoaded()) return@withLock
-
-        val file = File(scriptPath)
-        if (!file.exists()) {
-          android.util.Log.w("PlayerViewModel", "custombuttons.lua missing during $reason, rebuilding")
-          setupCustomButtons()
-          return@withLock
-        }
-
-        val loaded = loadCustomButtonsScript(file)
-        if (!loaded) {
-          android.util.Log.w("PlayerViewModel", "custombuttons.lua load failed during $reason")
+          // Update hr-seek settings dynamically
+          MPVLib.setPropertyString("hr-seek", if (shouldUsePreciseSeeking) "yes" else "no")
+          MPVLib.setPropertyString("hr-seek-framedrop", if (shouldUsePreciseSeeking) "no" else "yes")
         }
       }
     }
-  }
-
-  private fun isCustomButtonsScriptLoaded(): Boolean =
-    runCatching { MPVLib.getPropertyString(customButtonsLoadedFlagProperty) == "1" }
-      .getOrDefault(false)
-
-  private fun loadCustomButtonsScript(file: File): Boolean {
-    runCatching { MPVLib.setPropertyString(customButtonsLoadedFlagProperty, "0") }
-
-    return runCatching {
-      MPVLib.command("load-script", file.absolutePath)
-      true
-    }.getOrElse {
-      android.util.Log.w("PlayerViewModel", "load-script failed: ${it.message}")
-      false
-    }
-  }
-
-  fun callCustomButton(id: String) {
-    val safeId = id.replace("-", "_")
-    MPVLib.command("script-message", "call_button_$safeId")
-  }
-  
-  fun callCustomButtonLongPress(id: String) {
-    val safeId = id.replace("-", "_")
-    MPVLib.command("script-message", "call_button_long_$safeId")
-  }
-
-  private fun StringBuilder.processButton(
-    originalId: String,
-    safeId: String,
-    label: String,
-    command: String,
-    longPressCommand: String,
-    onStartup: String,
-    isLeft: Boolean,
-    uiList: MutableList<CustomButtonState>
-  ) {
-    if (label.isNotBlank()) {
-      uiList.add(CustomButtonState(originalId, label, isLeft))
-      
-      // On Startup Code
-      if (onStartup.isNotBlank()) {
-          append(onStartup)
-          append("\n")
-      }
-
-      // Click Handler
-      if (command.isNotBlank()) {
-        append(
-          """
-          function button_${safeId}()
-              ${command}
-          end
-          mp.register_script_message('call_button_${safeId}', button_${safeId})
-          """.trimIndent()
-        )
-        append("\n")
-      }
-      
-      // Long Press Handler
-      if (longPressCommand.isNotBlank()) {
-        append(
-          """
-          function button_long_${safeId}()
-              ${longPressCommand}
-          end
-          mp.register_script_message('call_button_long_${safeId}', button_long_${safeId})
-          """.trimIndent()
-        )
-        append("\n")
-      }
-    }
-
   }
 
   // Cached values
@@ -672,16 +377,16 @@ class PlayerViewModel(
         val path =
           uri.resolveUri(host.context)
             ?: return@launch withContext(Dispatchers.Main) {
-              showToast("Failed to load audio file: Invalid URI")
+              showToast("加载音频文件失败：无效的 URI")
             }
 
         MPVLib.command("audio-add", path, "cached")
         withContext(Dispatchers.Main) {
-          showToast("Audio track added")
+          showToast("已添加音频轨")
         }
       }.onFailure { e ->
         withContext(Dispatchers.Main) {
-          showToast("Failed to load audio: ${e.message}")
+          showToast("加载音频失败：${e.message}")
         }
         android.util.Log.e("PlayerViewModel", "Error adding audio", e)
       }
@@ -701,7 +406,7 @@ class PlayerViewModel(
 
         if (!isValidSubtitleFile(fileName)) {
           return@launch withContext(Dispatchers.Main) {
-            showToast("Invalid subtitle file format")
+            showToast("字幕文件格式无效")
           }
         }
 
@@ -735,13 +440,13 @@ class PlayerViewModel(
         val displayName = fileName.take(30).let { if (fileName.length > 30) "$it..." else it }
         if (!silent) {
           withContext(Dispatchers.Main) {
-            showToast("$displayName added")
+            showToast("已添加 $displayName")
           }
         }
       }.onFailure {
         if (!silent) {
           withContext(Dispatchers.Main) {
-            showToast("Failed to load subtitle")
+            showToast("加载字幕失败")
           }
         }
       }
@@ -787,171 +492,178 @@ class PlayerViewModel(
       _externalSubtitles.clear()
       // Scan for previously downloaded/added subtitles
       scanLocalSubtitles(mediaTitle)
-    }
-  }
 
-
-  fun removeSubtitle(id: Int) {
-    viewModelScope.launch(Dispatchers.IO) {
-      // Find the subtitle track info before removing
-      val tracks = subtitleTracks.value
-      val trackToRemove = tracks.firstOrNull { it.id == id }
+      // 1. Reset Aspect Ratio to saved preference
+      val savedAspect = playerPreferences.defaultVideoAspect.get()
+      val savedCustomRatio = playerPreferences.defaultCustomAspectRatio.get()
       
-      // If it's external, physically delete the file if we can find its URI
-      if (trackToRemove?.external == true && trackToRemove.externalFilename != null) {
-        val mpvPath = trackToRemove.externalFilename
-        val originalUriString = mpvPathToUriMap[mpvPath] ?: mpvPath
-        val uri = Uri.parse(originalUriString)
-        
-        val deleted = wyzieRepository.deleteSubtitleFile(uri)
-        
-        if (deleted) {
-          _externalSubtitles.remove(originalUriString)
-          mpvPathToUriMap.remove(mpvPath)
-          withContext(Dispatchers.Main) {
-            showToast("Subtitle deleted")
+      if (savedCustomRatio > 0) {
+        // Apply saved custom aspect ratio
+        _currentAspectRatio.value = savedCustomRatio
+        runCatching {
+          MPVLib.setPropertyDouble("panscan", 0.0)
+          MPVLib.setPropertyDouble("video-aspect-override", savedCustomRatio)
+        }
+      } else {
+        // Apply saved standard aspect mode (Fit, Crop, or Stretch)
+        _videoAspect.value = savedAspect
+        _currentAspectRatio.value = -1.0
+        runCatching {
+          when (savedAspect) {
+            VideoAspect.Fit -> {
+              MPVLib.setPropertyDouble("panscan", 0.0)
+              MPVLib.setPropertyDouble("video-aspect-override", -1.0)
+            }
+            VideoAspect.Crop -> {
+              MPVLib.setPropertyDouble("video-aspect-override", -1.0)
+              MPVLib.setPropertyDouble("panscan", 1.0)
+            }
+            VideoAspect.Stretch -> {
+              @Suppress("DEPRECATION")
+              val dm = DisplayMetrics()
+              @Suppress("DEPRECATION")
+              host.hostWindowManager.defaultDisplay.getRealMetrics(dm)
+              val rotate = MPVLib.getPropertyInt("video-params/rotate") ?: 0
+              val isVideoRotated = (rotate % 180 == 90)
+              val screenRatio = if (isVideoRotated) {
+                dm.heightPixels.toDouble() / dm.widthPixels.toDouble()
+              } else {
+                dm.widthPixels.toDouble() / dm.heightPixels.toDouble()
+              }
+              MPVLib.setPropertyDouble("video-aspect-override", screenRatio)
+              MPVLib.setPropertyDouble("panscan", 0.0)
+            }
           }
         }
       }
-      
-        MPVLib.command("sub-remove", id.toString())
-    }
-  }
 
-  // --- Media Search and Series Management ---
-
-  private var mediaSearchJob: Job? = null
-
-  fun searchMedia(query: String) {
-    mediaSearchJob?.cancel()
-    if (query.isBlank()) {
-      _mediaSearchResults.value = emptyList()
-      return
-    }
-
-    mediaSearchJob = viewModelScope.launch {
-      delay(300) // Debounce
-      _isSearchingMedia.value = true
-      wyzieRepository.searchMedia(query)
-        .onSuccess { results ->
-          _mediaSearchResults.value = results
-        }
-        .onFailure {
-          // Silent failure for autocomplete, or optionally show toast(if someone is reading this if u need u can impelmen this in future )
-        }
-      _isSearchingMedia.value = false
-    }
-  }
-
-  fun selectMedia(result: app.marlboroadvance.mpvex.repository.wyzie.WyzieTmdbResult) {
-    _mediaSearchResults.value = emptyList() // Clear results after selection
-    _wyzieSearchResults.value = emptyList() // Clear old subtitle results
-    
-    if (result.mediaType == "tv") {
-      fetchTvShowDetails(result.id)
-    } else {
-      // For movies, just search subtitles directly with the TMDB ID
-      searchSubtitles(result.title)
-      // Ideally we should pass the TMDB ID to searchSubtitles too if the API supports it
-    }
-  }
-
-  private fun fetchTvShowDetails(id: Int) {
-    viewModelScope.launch {
-      _isFetchingTvDetails.value = true
-      wyzieRepository.getTvShowDetails(id)
-        .onSuccess { details ->
-          val validSeasons = details.seasons.filter { it.season_number > 0 }.sortedBy { it.season_number }
-          _selectedTvShow.value = details.copy(seasons = validSeasons)
-          _selectedSeason.value = null
-          _seasonEpisodes.value = emptyList()
-        }
-        .onFailure {
-          showToast("Failed to load series details: ${it.message}")
-        }
-      _isFetchingTvDetails.value = false
-    }
-  }
-
-  fun selectSeason(season: app.marlboroadvance.mpvex.repository.wyzie.WyzieSeason) {
-    val tvShowId = _selectedTvShow.value?.id ?: return
-    _selectedSeason.value = season
-    
-    viewModelScope.launch {
-      _isFetchingEpisodes.value = true
-      wyzieRepository.getSeasonEpisodes(tvShowId, season.season_number)
-        .onSuccess { episodes ->
-          val validEpisodes = episodes.filter { it.episode_number > 0 }.sortedBy { it.episode_number }
-          _seasonEpisodes.value = validEpisodes
-          _selectedEpisode.value = null
-        }
-        .onFailure {
-          showToast("Failed to load episodes: ${it.message}")
-        }
-      _isFetchingEpisodes.value = false
-    }
-  }
-
-  fun selectEpisode(episode: app.marlboroadvance.mpvex.repository.wyzie.WyzieEpisode) {
-    _selectedEpisode.value = episode
-    val tvShowName = _selectedTvShow.value?.name ?: currentMediaTitle
-    searchSubtitles(tvShowName, episode.season_number, episode.episode_number)
-  }
-
-  fun clearMediaSelection() {
-    _selectedTvShow.value = null
-    _selectedSeason.value = null
-    _seasonEpisodes.value = emptyList()
-    _selectedEpisode.value = null
-    _mediaSearchResults.value = emptyList()
-  }
-
-  // --- Subtitle Search ---
-  fun searchSubtitles(query: String, season: Int? = null, episode: Int? = null, year: String? = null) {
-     viewModelScope.launch {
-         _isSearchingSub.value = true
-         wyzieRepository.search(query, season, episode, year)
-             .onSuccess { results ->
-                 _wyzieSearchResults.value = results
-             }
-             .onFailure {
-                 showToast("Search failed: ${it.message}")
-             }
-         _isSearchingSub.value = false
-     }
-  }
-
-  fun downloadSubtitle(subtitle: WyzieSubtitle) {
-      viewModelScope.launch {
-          _isDownloadingSub.value = true
-          wyzieRepository.download(subtitle, currentMediaTitle)
-              .onSuccess { uri ->
-                  addSubtitle(uri)
-              }
-              .onFailure {
-                  showToast("Download failed: ${it.message}")
-              }
-          _isDownloadingSub.value = false
+      // 2. Reset Video Zoom
+      if (_videoZoom.value != 0f) {
+          _videoZoom.value = 0f
+          runCatching { MPVLib.setPropertyDouble("video-zoom", 0.0) }
       }
+
+      // 3. Reset Video Pan
+      if (_videoPanX.value != 0f || _videoPanY.value != 0f) {
+          _videoPanX.value = 0f
+          _videoPanY.value = 0f
+          runCatching {
+              MPVLib.setPropertyDouble("video-pan-x", 0.0)
+              MPVLib.setPropertyDouble("video-pan-y", 0.0)
+          }
+      }
+      // ---------------------------------------------------
+    }
   }
 
+
+  fun getPrimarySubtitleId(): Int =
+    MPVLib.getPropertyString("sid")?.toIntOrNull() ?: 0
+
+  fun getSecondarySubtitleId(): Int =
+    MPVLib.getPropertyString("secondary-sid")?.toIntOrNull() ?: 0
+
+  fun removeSubtitle(id: Int) {
+    viewModelScope.launch(Dispatchers.IO) {
+      val primarySid = getPrimarySubtitleId()
+      val secondarySid = getSecondarySubtitleId()
+
+      // If removing the primary subtitle while a secondary subtitle is active,
+      // promote secondary to primary so the remaining subtitle stays at the bottom.
+      // Must clear secondary-sid FIRST so mpv does not reject assigning that track to sid.
+      if (id == primarySid) {
+        if (secondarySid > 0 && secondarySid != id) {
+          MPVLib.setPropertyString("secondary-sid", "no")
+          MPVLib.setPropertyInt("sid", secondarySid)
+        } else {
+          MPVLib.setPropertyString("sid", "no")
+        }
+      } else if (id == secondarySid) {
+        MPVLib.setPropertyString("secondary-sid", "no")
+      }
+
+      // Find the subtitle track info before removing
+      val tracks = subtitleTracks.value
+      val trackToRemove = tracks.firstOrNull { it.id == id }
+
+      // Removing an external subtitle only detaches it from the player and stops
+      // tracking it. It must NOT delete the underlying file from disk: external
+      // subtitles are user-provided (e.g. downloaded with another app), so
+      // deleting them would cause unexpected data loss.
+      if (trackToRemove?.external == true && trackToRemove.externalFilename != null) {
+        val mpvPath = trackToRemove.externalFilename
+        val originalUriString = mpvPathToUriMap[mpvPath] ?: mpvPath
+        _externalSubtitles.remove(originalUriString)
+        mpvPathToUriMap.remove(mpvPath)
+      }
+
+      MPVLib.command("sub-remove", id.toString())
+    }
+  }
 
   fun toggleSubtitle(id: Int) {
-    val primarySid = MPVLib.getPropertyInt("sid") ?: 0
-    val secondarySid = MPVLib.getPropertyInt("secondary-sid") ?: 0
+    val primarySid = getPrimarySubtitleId()
+    val secondarySid = getSecondarySubtitleId()
 
     when {
-      id == primarySid -> MPVLib.setPropertyString("sid", "no")
-      id == secondarySid -> MPVLib.setPropertyString("secondary-sid", "no")
-      primarySid <= 0 -> MPVLib.setPropertyInt("sid", id)
-      secondarySid <= 0 -> MPVLib.setPropertyInt("secondary-sid", id)
-      else -> MPVLib.setPropertyInt("sid", id)
+      id == primarySid -> {
+        // User disabled the primary subtitle while a secondary subtitle is active:
+        // Promote secondary to primary so the single remaining subtitle is positioned at the bottom.
+        // MUST clear secondary-sid FIRST so mpv does not reject assigning it to sid.
+        if (secondarySid > 0 && secondarySid != id) {
+          MPVLib.setPropertyString("secondary-sid", "no")
+          MPVLib.setPropertyInt("sid", secondarySid)
+        } else {
+          MPVLib.setPropertyString("sid", "no")
+        }
+      }
+      id == secondarySid -> {
+        // User disabled the secondary subtitle (top). Primary stays at bottom.
+        MPVLib.setPropertyString("secondary-sid", "no")
+      }
+      primarySid <= 0 -> {
+        if (secondarySid > 0) {
+          if (secondarySid == id) {
+            MPVLib.setPropertyString("secondary-sid", "no")
+            MPVLib.setPropertyInt("sid", id)
+          } else {
+            val prevSecondary = secondarySid
+            MPVLib.setPropertyString("secondary-sid", "no")
+            MPVLib.setPropertyInt("sid", prevSecondary)
+            MPVLib.setPropertyInt("secondary-sid", id)
+          }
+        } else {
+          MPVLib.setPropertyInt("sid", id)
+        }
+      }
+      secondarySid <= 0 -> {
+        if (primarySid != id) {
+          MPVLib.setPropertyInt("secondary-sid", id)
+        }
+      }
+      else -> {
+        // Both slots occupied; replace primary subtitle
+        MPVLib.setPropertyInt("sid", id)
+      }
+    }
+  }
+
+  /**
+   * Ensures that if only one subtitle track is active, it is always the primary
+   * subtitle (`sid`), which is positioned at the bottom of the screen.
+   */
+  fun normalizeSubtitles() {
+    val primarySid = getPrimarySubtitleId()
+    val secondarySid = getSecondarySubtitleId()
+    if (primarySid <= 0 && secondarySid > 0) {
+      MPVLib.setPropertyString("secondary-sid", "no")
+      MPVLib.setPropertyInt("sid", secondarySid)
     }
   }
 
   fun isSubtitleSelected(id: Int): Boolean {
-    val primarySid = MPVLib.getPropertyInt("sid") ?: 0
-    val secondarySid = MPVLib.getPropertyInt("secondary-sid") ?: 0
+    val primarySid = getPrimarySubtitleId()
+    val secondarySid = getSecondarySubtitleId()
     return (id == primarySid && primarySid > 0) || (id == secondarySid && secondarySid > 0)
   }
 
@@ -1278,9 +990,11 @@ class PlayerViewModel(
       }
     }
 
-    // Update the state
+    // Update the state and persist to preferences
     _videoAspect.value = aspect
     _currentAspectRatio.value = -1.0 // Reset custom ratio when using standard modes
+    playerPreferences.defaultVideoAspect.set(aspect)
+    playerPreferences.defaultCustomAspectRatio.set(-1.0)
 
     // Notify the UI
     if (showUpdate) {
@@ -1292,6 +1006,7 @@ class PlayerViewModel(
     MPVLib.setPropertyDouble("panscan", 0.0)
     MPVLib.setPropertyDouble("video-aspect-override", ratio)
     _currentAspectRatio.value = ratio
+    playerPreferences.defaultCustomAspectRatio.set(ratio)
     playerUpdate.value = PlayerUpdates.AspectRatio
   }
 
@@ -1312,87 +1027,6 @@ class PlayerViewModel(
           ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
         }
       }
-  }
-
-  // ==================== Lua Invocation Handling ====================
-
-  fun handleLuaInvocation(
-    property: String,
-    value: String,
-  ) {
-    val data = value.removeSurrounding("\"").ifEmpty { return }
-
-    when (property.substringAfterLast("/")) {
-      "show_text" -> playerUpdate.value = PlayerUpdates.ShowText(data)
-      "toggle_ui" -> handleToggleUI(data)
-      "show_panel" -> handleShowPanel(data)
-      "seek_to_with_text" -> {
-        val (seekValue, text) = data.split("|", limit = 2)
-        seekToWithText(seekValue.toInt(), text)
-      }
-      "seek_by_with_text" -> {
-        val (seekValue, text) = data.split("|", limit = 2)
-        seekByWithText(seekValue.toInt(), text)
-      }
-      "seek_by" -> seekByWithText(data.toInt(), null)
-      "seek_to" -> seekToWithText(data.toInt(), null)
-      "software_keyboard" -> handleSoftwareKeyboard(data)
-    }
-
-    MPVLib.setPropertyString(property, "")
-  }
-
-  private fun handleToggleUI(data: String) {
-    when (data) {
-      "show" -> showControls()
-      "toggle" -> if (controlsShown.value) hideControls() else showControls()
-      "hide" -> {
-        sheetShown.value = Sheets.None
-        panelShown.value = Panels.None
-        hideControls()
-      }
-    }
-  }
-
-  private fun handleShowPanel(data: String) {
-    when (data) {
-      "frame_navigation" -> {
-        sheetShown.value = Sheets.FrameNavigation
-      }
-      else -> {
-        panelShown.value =
-          when (data) {
-            "subtitle_settings" -> Panels.SubtitleSettings
-            "subtitle_delay" -> Panels.SubtitleDelay
-            "audio_delay" -> Panels.AudioDelay
-            "video_filters" -> Panels.VideoFilters
-            else -> Panels.None
-          }
-      }
-    }
-  }
-
-  private fun handleSoftwareKeyboard(data: String) {
-    when (data) {
-      "show" -> forceShowSoftwareKeyboard()
-      "hide" -> forceHideSoftwareKeyboard()
-      "toggle" ->
-        if (!inputMethodManager.isActive) {
-          forceShowSoftwareKeyboard()
-        } else {
-          forceHideSoftwareKeyboard()
-        }
-    }
-  }
-
-  @Suppress("DEPRECATION")
-  private fun forceShowSoftwareKeyboard() {
-    inputMethodManager.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0)
-  }
-
-  @Suppress("DEPRECATION")
-  private fun forceHideSoftwareKeyboard() {
-    inputMethodManager.toggleSoftInput(InputMethodManager.SHOW_IMPLICIT, 0)
   }
 
   // ==================== Gesture Handling ====================
@@ -1582,7 +1216,7 @@ class PlayerViewModel(
         // Check if file was created
         if (!tempFile.exists() || tempFile.length() == 0L) {
           withContext(Dispatchers.Main) {
-            Toast.makeText(context, "Failed to create screenshot", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "截图创建失败", Toast.LENGTH_SHORT).show()
           }
           return@launch
         }
@@ -1634,7 +1268,7 @@ class PlayerViewModel(
                 ).show()
             }
           } else {
-            throw Exception("Failed to create MediaStore entry")
+            throw Exception("创建 MediaStore 条目失败")
           }
         } else {
           // Android 9 and below - Use legacy external storage
@@ -1648,7 +1282,7 @@ class PlayerViewModel(
           if (!snapshotsDir.exists()) {
             val created = snapshotsDir.mkdirs()
             if (!created && !snapshotsDir.exists()) {
-              throw Exception("Failed to create mpvSnaps directory")
+              throw Exception("创建 mpvSnaps 目录失败")
             }
           }
 
@@ -1675,7 +1309,7 @@ class PlayerViewModel(
         }
       } catch (e: Exception) {
         withContext(Dispatchers.Main) {
-          Toast.makeText(context, "Failed to save snapshot: ${e.message}", Toast.LENGTH_LONG).show()
+          Toast.makeText(context, "保存截图失败：${e.message}", Toast.LENGTH_LONG).show()
         }
       } finally {
         _isSnapshotLoading.value = false
@@ -2131,7 +1765,7 @@ class PlayerViewModel(
     } else {
       MPVLib.command("vf", "remove", "@mpvex_hflip")
     }
-    playerUpdate.value = PlayerUpdates.ShowText(if (newMirrorState) "H-Flip On" else "H-Flip Off")
+    playerUpdate.value = PlayerUpdates.ShowText(if (newMirrorState) "水平翻转：开" else "水平翻转：关")
   }
 
   fun toggleVerticalFlip() {
@@ -2145,436 +1779,8 @@ class PlayerViewModel(
       MPVLib.command("vf", "remove", "@mpvex_vflip")
     }
 
-    playerUpdate.value = PlayerUpdates.ShowText(if (newState) "V-Flip On" else "V-Flip Off")
+    playerUpdate.value = PlayerUpdates.ShowText(if (newState) "垂直翻转：开" else "垂直翻转：关")
   }
-
-  // ==================== Ambient Mode Integration ====================
-
-  fun toggleAmbientMode() {
-    _isAmbientEnabled.value = !_isAmbientEnabled.value
-    playerPreferences.isAmbientEnabled.set(_isAmbientEnabled.value)
-    if (_isAmbientEnabled.value) {
-      lastAmbientScaleX = -1.0 // Force rewrite
-      updateAmbientStretch()
-      playerUpdate.value = PlayerUpdates.ShowText("氛围模式：开")
-    } else {
-      disableAmbientShader()
-      playerUpdate.value = PlayerUpdates.ShowText("氛围模式：关")
-    }
-  }
-
-  /** Disables the ambient shader and resets video scale. Safe to call from any state. */
-  private fun disableAmbientShader() {
-    ambientDebounceJob?.cancel()
-    ambientShaderFile?.let { file ->
-      runCatching { MPVLib.command("change-list", "glsl-shaders", "remove", file.absolutePath) }
-      file.delete()
-    }
-    ambientShaderFile = null
-    runCatching {
-      MPVLib.setPropertyDouble("video-scale-x", 1.0)
-      MPVLib.setPropertyDouble("video-scale-y", 1.0)
-    }
-  }
-
-  /** Called when the device orientation changes. Refreshes ambient shader for new dimensions. */
-  fun onOrientationChanged(isPortrait: Boolean) {
-    if (_isAmbientEnabled.value) {
-      // Force shader refresh to adapt to new screen dimensions
-      lastAmbientScaleX = -1.0
-      lastAmbientScaleY = -1.0
-      // Small delay to let the new OSD dimensions settle
-      ambientDebounceJob?.cancel()
-      ambientDebounceJob = viewModelScope.launch {
-        delay(200)
-        updateAmbientStretch()
-      }
-    }
-  }
-
-  /** Resets ambient mode when a new video file is loaded. Keeps ambient state persistent. */
-  fun resetAmbientMode() {
-    if (!_isAmbientEnabled.value) return
-
-    // Ambient Mode Persistent Fix for Next/Previous files
-    // DO NOT set _isAmbientEnabled.value = false
-    // Just temporarily remove the old shader and reset the scale
-    // so the new video starts with a clean slate before recalculating.
-    disableAmbientShader()
-    lastAmbientScaleX = -1.0
-    lastAmbientScaleY = -1.0
-  }
-
-  /**
-   * Re-injects the ambient shader if ambient mode is currently ON.
-   * Called after Anime4K shader changes, since setPropertyString("glsl-shaders", ...)
-   * wipes ALL glsl-shaders including the ambient one.
-   */
-  fun restartAmbientIfActive() {
-    if (!_isAmbientEnabled.value) return
-    // The old ambient shader file was wiped by the glsl-shaders reset.
-    // Clean up our local reference without trying to remove from MPV.
-    ambientShaderFile?.delete()
-    ambientShaderFile = null
-    lastAmbientScaleX = -1.0  // Force rewrite
-    // Small delay to let Anime4K shaders settle
-    ambientDebounceJob?.cancel()
-    ambientDebounceJob = viewModelScope.launch {
-      delay(200)
-      updateAmbientStretch()
-    }
-  }
-
-  fun updateAmbientParams(
-    blurSamples: Int = _ambientBlurSamples.value,
-    maxRadius: Float = _ambientMaxRadius.value,
-    glowIntensity: Float = _ambientGlowIntensity.value,
-    satBoost: Float = _ambientSatBoost.value,
-    ditherNoise: Float = _ambientDitherNoise.value,
-    bezelDepth: Float = _ambientBezelDepth.value,
-    vignetteStrength: Float = _ambientVignetteStrength.value,
-    warmth: Float = _ambientWarmth.value,
-    fadeCurve: Float = _ambientFadeCurve.value,
-    opacity: Float = _ambientOpacity.value
-  ) {
-    _ambientBlurSamples.value = blurSamples
-    _ambientMaxRadius.value = maxRadius
-    _ambientGlowIntensity.value = glowIntensity
-    _ambientSatBoost.value = satBoost
-    _ambientDitherNoise.value = ditherNoise
-    _ambientBezelDepth.value = bezelDepth
-    _ambientVignetteStrength.value = vignetteStrength
-    _ambientWarmth.value = warmth
-    _ambientFadeCurve.value = fadeCurve
-    _ambientOpacity.value = opacity
-
-    // Persist to preferences
-    playerPreferences.ambientBlurSamples.set(blurSamples)
-    playerPreferences.ambientMaxRadius.set(maxRadius)
-    playerPreferences.ambientGlowIntensity.set(glowIntensity)
-    playerPreferences.ambientSatBoost.set(satBoost)
-    playerPreferences.ambientDitherNoise.set(ditherNoise)
-    playerPreferences.ambientBezelDepth.set(bezelDepth)
-    playerPreferences.ambientVignetteStrength.set(vignetteStrength)
-    playerPreferences.ambientWarmth.set(warmth)
-    playerPreferences.ambientFadeCurve.set(fadeCurve)
-    playerPreferences.ambientOpacity.set(opacity)
-
-    // Debounce shader re-injection to avoid excessive GPU reloads
-    if (_isAmbientEnabled.value) {
-      ambientDebounceJob?.cancel()
-      ambientDebounceJob = viewModelScope.launch {
-        delay(150)
-        updateAmbientStretch()
-      }
-    }
-  }
-
-  /** Fast profile — low GPU cost, still visually solid. */
-  fun applyAmbientProfileFast() {
-    updateAmbientParams(
-      blurSamples = 16, maxRadius = 0.22f, glowIntensity = 1.4f,
-      satBoost = 1.2f, ditherNoise = 0.0f, bezelDepth = 0.0f,
-      vignetteStrength = 0.4f, warmth = 0.0f, fadeCurve = 1.6f, opacity = 1.0f
-    )
-  }
-
-  /** Balanced profile — good quality/performance trade-off for most devices. */
-  fun applyAmbientProfileBalanced() {
-    updateAmbientParams(
-      blurSamples = 24, maxRadius = 0.28f, glowIntensity = 1.45f,
-      satBoost = 1.25f, ditherNoise = 0.0f, bezelDepth = 0.0f,
-      vignetteStrength = 0.55f, warmth = 0.0f, fadeCurve = 1.7f, opacity = 1.0f
-    )
-  }
-
-  /** High Quality profile — maximum visual fidelity for high-end devices. */
-  fun applyAmbientProfileHighQuality() {
-    updateAmbientParams(
-      blurSamples = 48, maxRadius = 0.35f, glowIntensity = 1.5f,
-      satBoost = 1.3f, ditherNoise = 0.0f, bezelDepth = 0.0f,
-      vignetteStrength = 0.7f, warmth = 0.0f, fadeCurve = 1.8f, opacity = 1.0f
-    )
-  }
-
-  fun updateAmbientStretch() {
-    if (!_isAmbientEnabled.value) return
-
-    runCatching {
-      val osdW = MPVLib.getPropertyInt("osd-width") ?: 1920
-      val osdH = MPVLib.getPropertyInt("osd-height") ?: 1080
-
-      // Portrait mode: ambient glow goes on top/bottom (letterbox)
-      // Landscape mode: ambient glow goes on left/right (pillarbox)
-      // Both are handled by the same scaleX/scaleY math below
-
-      var vidW = (MPVLib.getPropertyInt("video-params/w") ?: 1920).toDouble()
-      var vidH = (MPVLib.getPropertyInt("video-params/h") ?: 1080).toDouble()
-      val par  = MPVLib.getPropertyDouble("video-params/par") ?: 1.0
-      val rot  = MPVLib.getPropertyInt("video-params/rotate") ?: 0
-
-      // Intercept autocrop boundaries — if a crop is active, use the cropped dimensions
-      // so the shader's aspect-ratio math matches the actual visible video area
-      val crop = MPVLib.getPropertyString("video-crop") ?: ""
-      val cropMatch = Regex("""^(\d+)x(\d+)""").find(crop)
-      if (cropMatch != null) {
-        vidW = cropMatch.groupValues[1].toDouble()
-        vidH = cropMatch.groupValues[2].toDouble()
-      }
-
-      if (osdW <= 0 || osdH <= 0 || vidW <= 0.0 || vidH <= 0.0) return
-
-      // Apply pixel aspect ratio (non-square pixels)
-      vidW *= par
-      // Swap dimensions for 90°/270° rotated videos (portrait shot stored as landscape)
-      if (rot == 90 || rot == 270) { val tmp = vidW; vidW = vidH; vidH = tmp }
-
-      val screenAr = osdW.toDouble() / osdH.toDouble()
-      val vidAr    = vidW / vidH
-      
-      // Scale the video to fill the screen — the shader remaps it back to the
-      // correct aspect ratio, so only the "overflow" area receives ambient glow.
-      val scaleX = if (screenAr > vidAr) screenAr / vidAr else 1.0
-      val scaleY = if (vidAr > screenAr) vidAr / screenAr else 1.0
-
-      if (Math.abs(scaleX - lastAmbientScaleX) > 0.001 ||
-          Math.abs(scaleY - lastAmbientScaleY) > 0.001) {
-        lastAmbientScaleX = scaleX
-        lastAmbientScaleY = scaleY
-        MPVLib.setPropertyDouble("video-scale-x", scaleX)
-        MPVLib.setPropertyDouble("video-scale-y", scaleY)
-      }
-
-      // ── Snapshot current parameter values ─────────────────────────────────
-      val sx      = lastAmbientScaleX
-      val sy      = lastAmbientScaleY
-      val samples = _ambientBlurSamples.value
-      val radius  = _ambientMaxRadius.value
-      val glow    = _ambientGlowIntensity.value
-      val sat     = _ambientSatBoost.value
-      val dither  = _ambientDitherNoise.value
-      val bezel   = _ambientBezelDepth.value
-      val vignette= _ambientVignetteStrength.value
-      val warmth  = _ambientWarmth.value
-      val curve   = _ambientFadeCurve.value
-      val opacity = _ambientOpacity.value
-
-      // ── Generate GLSL shader ───────────────────────────────────────────────
-      val shaderCode = buildAmbientShader(
-        sx = sx, sy = sy,
-        blurSamples = samples, maxRadius = radius,
-        glowIntensity = glow, satBoost = sat,
-        ditherNoise = dither, bezelDepth = bezel,
-        vignetteStrength = vignette, warmth = warmth,
-        fadeCurve = curve, opacity = opacity
-      )
-
-      // Each reload gets a unique filename so MPV never reuses a cached
-      // compiled shader — incrementing seq guarantees a fresh compile every time.
-      val newFile = File(host.context.cacheDir, "ambient_${++ambientShaderSeq}.glsl")
-      newFile.writeText(shaderCode)
-      ambientShaderFile?.let { oldFile ->
-        runCatching { MPVLib.command("change-list", "glsl-shaders", "remove", oldFile.absolutePath) }
-        oldFile.delete()
-      }
-      MPVLib.command("change-list", "glsl-shaders", "append", newFile.absolutePath)
-      ambientShaderFile = newFile
-    }.onFailure { e ->
-      Log.e(TAG, "Failed to update ambient stretch", e)
-    }
-  }
-
-  /**
-   * Builds the True Ambient GLSL shader string with all parameters baked in
-   * as `#define` constants. The shader:
-   *   1. Detects the video region using aspect-ratio correction (SCALE_X/Y).
-   *   2. For interior pixels — returns the original (unscaled) video pixel.
-   *   3. For ambient pixels — samples the nearest video-edge with a
-   *      Fibonacci-spiral blur kernel and composites the glowing result.
-   */
-  private fun buildAmbientShader(
-    sx: Double, sy: Double,
-    blurSamples: Int, maxRadius: Float,
-    glowIntensity: Float, satBoost: Float,
-    ditherNoise: Float, bezelDepth: Float,
-    vignetteStrength: Float, warmth: Float,
-    fadeCurve: Float, opacity: Float
-  ): String = """
-//!HOOK OUTPUT
-//!BIND HOOKED
-//!DESC True Ambient Mode
-
-// ─────────────────────────────────────────────────────────────────────────────
-// CONFIGURATION  (all values injected at runtime — do not hand-edit)
-// ─────────────────────────────────────────────────────────────────────────────
-
-// Blur quality: number of spiral samples (higher = smoother, more GPU cost)
-#define BLUR_SAMPLES     $blurSamples
-
-// Maximum blur spread radius in normalised UV coordinates
-#define MAX_RADIUS       $maxRadius
-
-// Ambient brightness multiplier (1.0 = neutral)
-#define GLOW_INTENSITY   $glowIntensity
-
-// Saturation boost applied to the ambient glow (1.0 = neutral)
-#define SAT_BOOST        $satBoost
-
-// Width of the soft blend zone at the video edge (0 = hard cut)
-#define BEZEL_DEPTH      $bezelDepth
-
-// Anti-banding dither noise amplitude
-#define DITHER_NOISE     $ditherNoise
-
-// Corner vignette strength (0.0 = none, 1.0 = full darkening)
-#define VIGNETTE_STR     $vignetteStrength
-
-// Color temperature shift  (-1.0 = cooler/blue, 0.0 = neutral, +1.0 = warmer/orange)
-#define WARMTH           $warmth
-
-// Distance falloff power  (1.0 = linear, 2.0 = quadratic, higher = tighter glow)
-#define FADE_CURVE       $fadeCurve
-
-// Overall ambient opacity multiplier
-#define OPACITY          $opacity
-
-// Aspect-ratio correction factors derived from video / screen dimensions
-#define SCALE_X          $sx
-#define SCALE_Y          $sy
-
-// ─────────────────────────────────────────────────────────────────────────────
-// CONSTANTS
-// ─────────────────────────────────────────────────────────────────────────────
-
-const float PI  = 3.14159265358979;
-const float PHI = 1.61803398874989;   // Golden ratio — drives Fibonacci spiral
-
-// ─────────────────────────────────────────────────────────────────────────────
-// UTILITY FUNCTIONS
-// ─────────────────────────────────────────────────────────────────────────────
-
-// Hash-based pseudo-random scalar in [0, 1]
-float rand(vec2 seed) {
-    return fract(sin(dot(seed, vec2(12.9898, 78.233))) * 43758.5453);
-}
-
-// BT.709 perceptual luminance
-float luma(vec3 rgb) {
-    return dot(rgb, vec3(0.2126, 0.7152, 0.0722));
-}
-
-// Luma-preserving saturation adjustment
-vec3 adjust_saturation(vec3 rgb, float amount) {
-    return mix(vec3(luma(rgb)), rgb, amount);
-}
-
-// Kelvin-style warm / cool color temperature shift
-vec3 apply_warmth(vec3 rgb, float amount) {
-    rgb.r = clamp(rgb.r + amount * 0.060,  0.0, 1.0);
-    rgb.g = clamp(rgb.g + amount * 0.025,  0.0, 1.0);
-    rgb.b = clamp(rgb.b - amount * 0.080,  0.0, 1.0);
-    return rgb;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// MAIN HOOK
-// ─────────────────────────────────────────────────────────────────────────────
-
-vec4 hook() {
-    // Current pixel position in normalised screen space [0, 1]
-    vec2 uv = HOOKED_pos;
-
-    // Remap screen UV → original (pre-scale) video UV space.
-    // Pixels outside [0, 1] × [0, 1] are in the letterbox / pillarbox region.
-    vec2 video_uv = (uv - 0.5) * vec2(SCALE_X, SCALE_Y) + 0.5;
-
-    // ── Hard boundary: return video pixel directly — zero ambient bleeds in ──
-    if (video_uv.x >= 0.0 && video_uv.x <= 1.0 &&
-        video_uv.y >= 0.0 && video_uv.y <= 1.0) {
-        return HOOKED_tex(video_uv);
-    }
-
-    // ── Ambient region: compute edge-directed glow ────────────────────────────
-
-    // Nearest point on the video border (clamped to [0, 1])
-    vec2  edge_origin = clamp(video_uv, 0.0, 1.0);
-
-    // Euclidean distance from this pixel to the video edge (used for fade-out).
-    // Constant 3.0 gives ~22 % brightness at half-radius and ~5 % at full-radius —
-    // visible glow across the whole pillarbox / letterbox area.
-    float edge_dist   = length(video_uv - edge_origin);
-    float edge_fade   = exp(-edge_dist * (3.0 / max(MAX_RADIUS, 0.001)));
-
-    // Per-pixel rotation jitter to avoid banding in the spiral pattern
-    float jitter    = rand(uv * HOOKED_size) * (PI * 2.0);
-    float angle_inc = PI * 2.0 / (PHI * PHI);  // ~2.399 rad — golden angle
-    float inv_n     = 1.0 / float(BLUR_SAMPLES);
-
-    // Aspect correction keeps the blur kernel circular in screen space
-    vec2 aspect_fix = vec2(HOOKED_size.y / HOOKED_size.x, 1.0);
-
-    vec3  acc_color  = vec3(0.0);
-    float acc_weight = 0.0;
-
-    // ── Fibonacci-spiral blur kernel ──────────────────────────────────────────
-    for (int i = 0; i < BLUR_SAMPLES; i++) {
-        float fi    = float(i) + 0.5;
-        float r     = sqrt(fi * inv_n) * MAX_RADIUS;
-        float theta = fi * angle_inc + jitter;
-
-        // Sample from the nearest video-edge origin, spreading outward.
-        // This ensures ambient colours come from the actual video edge.
-        vec2 offset     = vec2(cos(theta), sin(theta)) * r * aspect_fix;
-        vec2 sample_uv  = clamp(edge_origin + offset, 0.0, 1.0);
-        vec3 sample_rgb = HOOKED_tex(sample_uv).rgb;
-
-        // Weight = distance falloff × luminance bloom
-        // (brighter video pixels contribute more to the glow)
-        float dist_w = pow(max(1.0 / (1.0 + r * 40.0), 0.0), FADE_CURVE);
-        float luma_w = 1.0 + luma(sample_rgb) * 2.0;
-        float w      = dist_w * luma_w;
-
-        acc_color  += sample_rgb * w;
-        acc_weight += w;
-    }
-
-    // Normalise and apply global brightness
-    vec3 glow = (acc_color / max(acc_weight, 1e-5)) * GLOW_INTENSITY;
-
-    // ── Post-processing ───────────────────────────────────────────────────────
-
-    glow = adjust_saturation(glow, SAT_BOOST);
-    glow = apply_warmth(glow, WARMTH);
-
-    // Fade the glow out as distance from the video edge increases
-    glow *= edge_fade;
-
-    // Radial vignette: corners receive less ambient light
-    float vig_r = length(uv - 0.5) * 2.0;
-    glow *= mix(1.0, smoothstep(1.3, 0.1, vig_r), VIGNETTE_STR);
-
-    // Dither noise — breaks up colour banding in the gradient
-    float noise = rand(uv + vec2(fract(uv.x * 127.1), fract(uv.y * 311.7)));
-    glow = clamp(glow + DITHER_NOISE * (noise - 0.5), 0.0, 1.0);
-
-    // ── Compositing ───────────────────────────────────────────────────────────
-    // Bezel blend: transition from the nearest video-edge pixel outward into
-    // the ambient glow. BEZEL_DEPTH is in video-UV units; the blend lives
-    // entirely in the ambient region so no glow ever bleeds into the video.
-    float bezel       = max(BEZEL_DEPTH, 0.001);
-    vec2  outside_dist = max(max(-video_uv, video_uv - vec2(1.0)), vec2(0.0));
-    float dist_to_edge = max(outside_dist.x, outside_dist.y);
-    float bezel_alpha  = smoothstep(0.0, bezel, dist_to_edge);
-
-    // At dist=0 (right at edge): show the video edge pixel → seamless join.
-    // At dist≥bezel: show full ambient glow.
-    // OPACITY scales only rgb; alpha stays 1.0 so the output stays opaque.
-    vec4 edge_pixel  = HOOKED_tex(edge_origin);
-    vec4 ambient_out = vec4(glow * OPACITY, 1.0);
-
-    return mix(edge_pixel, ambient_out, bezel_alpha);
-}
-  """.trimIndent()
 
   // ==================== Utility ====================
 
@@ -2584,9 +1790,6 @@ vec4 hook() {
 
   override fun onCleared() {
     super.onCleared()
-    ambientDebounceJob?.cancel()
-    ambientShaderFile?.delete()
-    ambientShaderFile = null
   }
 }
 

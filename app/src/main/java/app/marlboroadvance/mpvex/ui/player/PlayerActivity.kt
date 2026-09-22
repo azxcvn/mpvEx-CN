@@ -1,4 +1,4 @@
-﻿package app.marlboroadvance.mpvex.ui.player
+package app.marlboroadvance.mpvex.ui.player
 
 import android.content.BroadcastReceiver
 import android.content.ComponentName
@@ -39,7 +39,6 @@ import app.marlboroadvance.mpvex.database.entities.PlaybackStateEntity
 import app.marlboroadvance.mpvex.databinding.PlayerLayoutBinding
 import app.marlboroadvance.mpvex.domain.playbackstate.repository.PlaybackStateRepository
 import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
-import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.AudioPreferences
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
@@ -138,11 +137,6 @@ class PlayerActivity :
    * Preferences for browser settings.
    */
   private val browserPreferences: BrowserPreferences by inject()
-
-  /**
-   * Preferences for appearance settings.
-   */
-  private val appearancePreferences: AppearancePreferences by inject()
 
   /**
    * Manager for file operations.
@@ -337,8 +331,10 @@ class PlayerActivity :
     super.onCreate(savedInstanceState)
     setContentView(binding.root)
 
+    // OPTIMIZATION: Set volume control stream so hardware buttons control media volume
+    volumeControlStream = AudioManager.STREAM_MUSIC
+
     setupMPV()
-    viewModel.onMpvCoreInitialized()
     MediaPlaybackService.createNotificationChannel(this)
     setupAudio()
     setupBackPressHandler()
@@ -398,12 +394,21 @@ class PlayerActivity :
     // Extract fileName early so it's available when video loads
     fileName = getFileName(intent)
     if (fileName.isBlank()) {
-      fileName = intent.data?.lastPathSegment ?: "Unknown Video"
+      fileName = intent.data?.lastPathSegment ?: "未知视频"
     }
     mediaIdentifier = getMediaIdentifier(intent, fileName)
 
     // Set HTTP headers (including referer) BEFORE playing the file
     setHttpHeadersFromExtras(intent.extras)
+
+    // Guard against opening a local file that was deleted (e.g. externally)
+    // before it was launched. Avoids a blank/stuck player with no feedback.
+    val initialUri = extractUriFromIntent(intent)
+    if (initialUri != null && isLocalFileMissing(initialUri)) {
+      viewModel.showToast(getString(app.marlboroadvance.mpvex.R.string.toast_file_no_longer_exists))
+      finishAndRemoveTask()
+      return
+    }
 
     getPlayableUri(intent)?.let(player::playFile)
 
@@ -415,18 +420,6 @@ class PlayerActivity :
 
     // Apply persisted shuffle state after playlist is loaded
     viewModel.applyPersistedShuffleState()
-
-    // Observe selected Lua scripts for runtime loading
-    lifecycleScope.launch {
-      var previousScripts = advancedPreferences.selectedLuaScripts.get()
-      advancedPreferences.selectedLuaScripts.changes().collect { newScripts ->
-        val addedScripts = newScripts - previousScripts
-        addedScripts.forEach { scriptName ->
-          loadScriptAtRuntime(scriptName)
-        }
-        previousScripts = newScripts
-      }
-    }
 
     window.attributes.layoutInDisplayCutoutMode =
       WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
@@ -446,6 +439,7 @@ class PlayerActivity :
         val updatedConfiguration = Configuration(originalConfiguration).apply { fontScale = 1f }
         val configurationContext = newBase.createConfigurationContext(updatedConfiguration)
         val configurationDisplayMetrics = configurationContext.resources.displayMetrics
+        @Suppress("DEPRECATION")
         configurationDisplayMetrics.scaledDensity = updatedConfiguration.fontScale * configurationDisplayMetrics.density
         configurationContext
       }
@@ -577,6 +571,9 @@ class PlayerActivity :
     Log.d(TAG, "PlayerActivity onDestroy")
 
     runCatching {
+      // OPTIMIZATION: Prevent any further UI updates or callbacks
+      isReady = false
+
       // Only stop the service if we're not doing manual background playback
       if ((isUserFinishing || isFinishing) && !isManualBackgroundPlayback) {
         if (serviceBound) {
@@ -677,7 +674,12 @@ class PlayerActivity :
       val shouldPause = (!audioPreferences.automaticBackgroundPlayback.get() && !isManualBackgroundPlayback) || 
                         (isUserFinishing && !isManualBackgroundPlayback)
 
-      if (!isInPip && shouldPause) {
+      // OPTIMIZATION: Stop playback immediately if finishing to reduce cleanup overhead
+      if (isFinishing && !isManualBackgroundPlayback) {
+        viewModel.pause()
+        // Tell MPV to stop processing to reduce busywork during cleanup
+        MPVLib.command("stop")
+      } else if (!isInPip && shouldPause) {
         wasPlayingBeforePause = !(viewModel.paused ?: true)
         viewModel.pause()
       }
@@ -687,7 +689,10 @@ class PlayerActivity :
         restoreSystemUI()
       }
 
-      saveVideoPlaybackState(fileName)
+      // OPTIMIZATION: Only save if not finishing (onDestroy will handle final save)
+      if (!isFinishing) {
+        saveVideoPlaybackState(fileName)
+      }
     }.onFailure { e ->
       Log.e(TAG, "Error during onPause", e)
     }
@@ -715,7 +720,7 @@ class PlayerActivity :
     super.finish()
   }
 
-  @RequiresApi(Build.VERSION_CODES.P)
+  // finishAndRemoveTask() was added in API 21, but since our minSdk is 26, it's always available
   override fun finishAndRemoveTask() {
     runCatching {
       // Don't restore UI during normal finish to prevent flickering
@@ -807,6 +812,7 @@ class PlayerActivity :
 
     // Set status bar color for when it will be shown (with controls)
     if (playerPreferences.showSystemStatusBar.get()) {
+      @Suppress("DEPRECATION")
       window.statusBarColor = android.graphics.Color.parseColor("#80000000") // Semi-transparent black
     }
 
@@ -858,11 +864,9 @@ class PlayerActivity :
 
   /**
    * Initializes the MPV player with the necessary paths and observers.
-   * CRITICAL: Must copy config and scripts BEFORE initializing MPV, as MPV loads scripts during init.
    */
   private fun setupMPV() {
     // Copy essential files FIRST, before MPV initialization
-    // MPV will load scripts during initialize(), so they must exist beforehand
     runCatching {
       Utils.copyAssets(this@PlayerActivity)
       syncFromUserMpvDirectory()
@@ -901,9 +905,6 @@ class PlayerActivity :
     if (tree != null) {
       Log.d(TAG, "Syncing from user MPV directory: ${tree.uri}")
       syncConfigFiles(tree)
-      syncScripts(tree)
-      syncScriptOpts(tree)
-      syncShaders(tree)
       syncFonts(tree)
       Log.d(TAG, "Full MPV directory sync completed")
     } else {
@@ -951,130 +952,6 @@ class PlayerActivity :
         Log.e(TAG, "Error syncing config: $configName", e)
       }
     }
-  }
-
-  // ==================== Scripts Sync ====================
-
-  /**
-   * Syncs all script files (.lua, .js) from the user's MPV directory.
-   * Looks in scripts/ subfolder first (case-insensitive), falls back to root.
-   */
-  private fun syncScripts(tree: DocumentFile) {
-    val internalScriptsDir = File(filesDir, "scripts")
-    internalScriptsDir.mkdirs()
-    internalScriptsDir.listFiles()?.forEach { it.delete() }
-
-    if (!advancedPreferences.enableLuaScripts.get()) {
-      Log.d(TAG, "Lua scripts disabled, skipping")
-      return
-    }
-
-    val scriptsSubdir = findSubdirCaseInsensitive(tree, "scripts")
-    val sourceDir = scriptsSubdir ?: tree
-    val scriptExtensions = setOf("lua", "js")
-    var count = 0
-
-    sourceDir.listFiles().forEach { file ->
-      if (!file.isFile) return@forEach
-      val name = file.name ?: return@forEach
-      val ext = name.substringAfterLast('.', "").lowercase()
-      if (ext !in scriptExtensions) return@forEach
-
-      val selectedScripts = advancedPreferences.selectedLuaScripts.get()
-      if (!selectedScripts.contains(name)) {
-          return@forEach
-      }
-
-      runCatching {
-        contentResolver.openInputStream(file.uri)?.use { input ->
-          File(internalScriptsDir, name).outputStream().use { output ->
-            input.copyTo(output)
-          }
-          count++
-          Log.d(TAG, "Synced script: $name")
-        }
-      }.onFailure { e ->
-        Log.e(TAG, "Error syncing script: $name", e)
-      }
-    }
-
-    Log.d(TAG, "Scripts sync: $count file(s) from ${if (scriptsSubdir != null) "scripts/" else "root"}")
-  }
-
-  // ==================== Script Options Sync ====================
-
-  /**
-   * Syncs all files from script-opts/ subfolder (case-insensitive).
-   */
-  private fun syncScriptOpts(tree: DocumentFile) {
-    val internalScriptOptsDir = File(filesDir, "script-opts")
-    internalScriptOptsDir.mkdirs()
-    internalScriptOptsDir.listFiles()?.forEach { it.delete() }
-
-    val scriptOptsSubdir = findSubdirCaseInsensitive(tree, "script-opts")
-    if (scriptOptsSubdir == null) {
-      Log.d(TAG, "No script-opts/ subfolder found, skipping")
-      return
-    }
-
-    var count = 0
-    scriptOptsSubdir.listFiles().forEach { file ->
-      if (!file.isFile) return@forEach
-      val name = file.name ?: return@forEach
-
-      runCatching {
-        contentResolver.openInputStream(file.uri)?.use { input ->
-          File(internalScriptOptsDir, name).outputStream().use { output ->
-            input.copyTo(output)
-          }
-          count++
-          Log.d(TAG, "Synced script-opt: $name")
-        }
-      }.onFailure { e ->
-        Log.e(TAG, "Error syncing script-opt: $name", e)
-      }
-    }
-
-    Log.d(TAG, "Script-opts sync: $count file(s)")
-  }
-
-  // ==================== Shaders Sync ====================
-
-  /**
-   * Syncs shader files (.glsl, .hook, .comp) from the user's MPV directory.
-   * Looks in shaders/ subfolder first (case-insensitive), falls back to root.
-   * Saves to shaders/ (same as non-Play Store) so Lua scripts can find them at ~~/shaders/
-   */
-  private fun syncShaders(tree: DocumentFile) {
-    // Use shaders/ directory directly for compatibility with existing Lua scripts
-    val shadersDir = File(filesDir, "shaders")
-    shadersDir.mkdirs()
-
-    val shadersSubdir = findSubdirCaseInsensitive(tree, "shaders")
-    val sourceDir = shadersSubdir ?: tree
-    val shaderExtensions = setOf("glsl", "hook", "comp")
-    var count = 0
-
-    sourceDir.listFiles().forEach { file ->
-      if (!file.isFile) return@forEach
-      val name = file.name ?: return@forEach
-      val ext = name.substringAfterLast('.', "").lowercase()
-      if (ext !in shaderExtensions) return@forEach
-
-      runCatching {
-        contentResolver.openInputStream(file.uri)?.use { input ->
-          File(shadersDir, name).outputStream().use { output ->
-            input.copyTo(output)
-          }
-          count++
-          Log.d(TAG, "Synced shader: $name")
-        }
-      }.onFailure { e ->
-        Log.e(TAG, "Error syncing shader: $name", e)
-      }
-    }
-
-    Log.d(TAG, "Shaders sync: $count file(s)")
   }
 
   // ==================== Fonts Sync ====================
@@ -1136,59 +1013,6 @@ class PlayerActivity :
     Log.d(TAG, "Fonts sync: $count file(s) from MPV directory")
   }
 
-  /**
-   * Loads a specific Lua script at runtime without restarting the player.
-   * Finds the script in the user's MPV directory, copies it to internal storage,
-   * and commands MPV to load it.
-   */
-  private fun loadScriptAtRuntime(scriptName: String) {
-    if (!mpvInitialized || isFinishing) return
-
-    val mpvConfStorageUri = advancedPreferences.mpvConfStorageUri.get()
-    if (mpvConfStorageUri.isBlank()) return
-
-    lifecycleScope.launch(Dispatchers.IO) {
-      runCatching {
-        val tree = DocumentFile.fromTreeUri(this@PlayerActivity, mpvConfStorageUri.toUri())
-        if (tree != null && tree.exists()) {
-          // Look for scripts/ subfolder first (case-insensitive), fall back to root
-          val scriptsDir = findSubdirCaseInsensitive(tree, "scripts") ?: tree
-          
-          val scriptFile = scriptsDir.listFiles().firstOrNull { 
-            it.name == scriptName 
-          }
-
-          if (scriptFile != null) {
-            val internalScriptsDir = File(filesDir, "scripts")
-            if (!internalScriptsDir.exists()) internalScriptsDir.mkdirs()
-            
-            val targetFile = File(internalScriptsDir, scriptName)
-            
-            contentResolver.openInputStream(scriptFile.uri)?.use { input ->
-              targetFile.outputStream().use { output ->
-                input.copyTo(output)
-              }
-            }
-            
-            withContext(Dispatchers.Main) {
-              MPVLib.command("load-script", targetFile.absolutePath)
-              viewModel.showToast("Loaded script: $scriptName")
-            }
-          }
-        }
-      }.onFailure { e ->
-        Log.e(TAG, "Error loading script at runtime: $scriptName", e)
-        withContext(Dispatchers.Main) {
-          android.widget.Toast.makeText(
-            this@PlayerActivity,
-            "Failed to load script: ${e.message}",
-            android.widget.Toast.LENGTH_LONG
-          ).show()
-        }
-      }
-    }
-  }
-
   // ==================== Helpers ====================
 
   /**
@@ -1206,8 +1030,7 @@ class PlayerActivity :
         val content = advancedPreferences.inputConf.get()
         if (content.isNotBlank()) writeText(content)
       }
-      // Ensure scripts directory exists even without user dir
-      File(filesDir, "scripts").mkdirs()
+      // Ensure fonts directory exists even without user dir
       File(filesDir, "fonts").mkdirs()
     }.onFailure { e ->
       Log.e(TAG, "Error creating fallback config files", e)
@@ -1460,7 +1283,7 @@ class PlayerActivity :
     // For HTTP/HTTPS URLs, extract from path (will be updated async via HTTP headers)
     if (HttpUtils.isNetworkStream(uri)) {
       // Get the last path segment and decode URL encoding
-      val path = uri.path ?: return uri.host ?: "Network Stream"
+      val path = uri.path ?: return uri.host ?: "网络流"
       val lastSegment = path.substringAfterLast("/")
 
       if (lastSegment.isNotBlank()) {
@@ -1469,7 +1292,7 @@ class PlayerActivity :
           java.net.URLDecoder.decode(lastSegment, "UTF-8")
             .substringBefore("?") // Remove query parameters
             .substringBefore("#") // Remove fragments (only for network streams)
-            .takeIf { it.isNotBlank() } ?: uri.host ?: "Network Stream"
+            .takeIf { it.isNotBlank() } ?: uri.host ?: "网络流"
         } catch (e: Exception) {
           lastSegment
             .substringBefore("?")
@@ -1478,11 +1301,11 @@ class PlayerActivity :
       }
 
       // If no filename in path, use hostname
-      return uri.host ?: "Network Stream"
+      return uri.host ?: "网络流"
     }
 
     // For file:// and content:// URIs - preserve # characters as they're part of the filename
-    val lastSegment = uri.lastPathSegment?.substringAfterLast("/") ?: uri.path ?: "Unknown Video"
+    val lastSegment = uri.lastPathSegment?.substringAfterLast("/") ?: uri.path ?: "未知视频"
     
     // For local files, only decode URL encoding but preserve # characters
     return try {
@@ -1579,8 +1402,6 @@ class PlayerActivity :
    */
   override fun onConfigurationChanged(newConfig: Configuration) {
     super.onConfigurationChanged(newConfig)
-    val isPortrait = newConfig.orientation == Configuration.ORIENTATION_PORTRAIT
-    viewModel.onOrientationChanged(isPortrait)
     if (isReady) {
       handleConfigurationChange()
     }
@@ -1627,9 +1448,6 @@ class PlayerActivity :
 
         // Re-apply Anime4K shaders (check for resolution limit)
         player.applyAnime4KShaders()
-
-        // Re-check ambient stretch — handles portrait videos and new content
-        viewModel.updateAmbientStretch()
       }
     }
   }
@@ -1735,22 +1553,6 @@ class PlayerActivity :
   }
 
   /**
-   * Observer callback for MPV property changes (String values).
-   * Handles Lua script invocations.
-   *
-   * @param property The property name that changed
-   * @param value The new String value
-   */
-  internal fun onObserverEvent(
-    property: String,
-    value: String,
-  ) {
-    when (property.substringBeforeLast("/")) {
-      "user-data/mpvex" -> viewModel.handleLuaInvocation(property, value)
-    }
-  }
-
-  /**
    * Observer callback for MPV property changes (MPVNode values).
    *
    * This method is called when an MPV property (with MPVNode value) changes.
@@ -1759,7 +1561,6 @@ class PlayerActivity :
    * @param property The property name that changed
    * @param value The new MPVNode value
    */
-  @Suppress("UnusedParameter")
   internal fun onObserverEvent(
     property: String,
     value: MPVNode,
@@ -1776,7 +1577,6 @@ class PlayerActivity :
    * @param property The property name that changed
    * @param value The new Double value
    */
-  @Suppress("UnusedParameter")
   internal fun onObserverEvent(
     property: String,
     value: Double,
@@ -1801,6 +1601,22 @@ class PlayerActivity :
         }
       }
     }
+  }
+
+  /**
+   * Observer callback for MPV property changes (String values).
+   *
+   * This method is called when an MPV property (with String value) changes.
+   * Extend this method to handle properties as needed.
+   *
+   * @param property The property name that changed
+   * @param value The new String value
+   */
+  internal fun onObserverEvent(
+    property: String,
+    value: String,
+  ) {
+    // Currently no String properties are handled
   }
 
   /**
@@ -1848,7 +1664,7 @@ class PlayerActivity :
       fileName = getFileName(intent)
       // Ensure fileName is not blank - use a fallback if necessary
       if (fileName.isBlank()) {
-        fileName = intent.data?.lastPathSegment ?: "Unknown Video"
+        fileName = intent.data?.lastPathSegment ?: "未知视频"
       }
       mediaIdentifier = getMediaIdentifier(intent, fileName)
     } else if (mediaIdentifier.isBlank()) {
@@ -1861,9 +1677,6 @@ class PlayerActivity :
 
     // Reset AB loop values when video changes
     viewModel.clearABLoop()
-
-    // Reset ambient mode to OFF when a new video starts
-    viewModel.resetAmbientMode()
 
     setIntentExtras(intent.extras)
 
@@ -1880,6 +1693,20 @@ class PlayerActivity :
           val zoomPreference = playerPreferences.defaultVideoZoom.get()
           MPVLib.setPropertyDouble("video-zoom", zoomPreference.toDouble())
           viewModel.setVideoZoom(zoomPreference)
+        }
+      }
+
+      // Apply saved aspect ratio setting
+      withContext(Dispatchers.Main) {
+        val savedAspect = playerPreferences.defaultVideoAspect.get()
+        val savedCustomRatio = playerPreferences.defaultCustomAspectRatio.get()
+        
+        if (savedCustomRatio > 0) {
+          // Apply custom aspect ratio
+          viewModel.setCustomAspectRatio(savedCustomRatio)
+        } else {
+          // Apply standard aspect mode (Fit, Crop, or Stretch)
+          viewModel.changeVideoAspect(savedAspect, showUpdate = false)
         }
       }
     }
@@ -2005,7 +1832,7 @@ class PlayerActivity :
         if (betterFilename != null && betterFilename.isNotBlank() &&
           betterFilename != fileName &&
           betterFilename != uri.host &&
-          betterFilename != "Network Stream"
+          betterFilename != "网络流"
         ) {
 
           Log.d(TAG, "Found better filename from HTTP headers: $betterFilename")
@@ -2168,14 +1995,22 @@ class PlayerActivity :
         val duration = viewModel.duration ?: 0
         val timeRemaining = if (duration > lastPosition) duration - lastPosition else 0
 
+        val currentSid = player.sid
+        val currentSecondarySid = player.secondarySid
+        val (effectiveSid, effectiveSecondarySid) = if (currentSid <= 0 && currentSecondarySid > 0) {
+          currentSecondarySid to -1
+        } else {
+          currentSid to currentSecondarySid
+        }
+
         playbackStateRepository.upsert(
           PlaybackStateEntity(
             mediaTitle = mediaIdentifier,
             lastPosition = lastPosition,
             playbackSpeed = MPVLib.getPropertyDouble("speed") ?: DEFAULT_PLAYBACK_SPEED,
             videoZoom = MPVLib.getPropertyDouble("video-zoom")?.toFloat() ?: 0f,
-            sid = player.sid,
-            secondarySid = player.secondarySid,
+            sid = effectiveSid,
+            secondarySid = effectiveSecondarySid,
             subDelay = ((MPVLib.getPropertyDouble("sub-delay") ?: 0.0) * MILLISECONDS_TO_SECONDS).toInt(),
             subSpeed = MPVLib.getPropertyDouble("sub-speed") ?: DEFAULT_SUB_SPEED,
             aid = player.aid,
@@ -2280,11 +2115,16 @@ class PlayerActivity :
     if (state.sid > 0) {
       player.sid = state.sid
       Log.d(TAG, "Restored primary subtitle track: ${state.sid} (user selection)")
-    }
-
-    if (state.secondarySid > 0) {
-      player.secondarySid = state.secondarySid
-      Log.d(TAG, "Restored secondary subtitle track: ${state.secondarySid} (user selection)")
+      if (state.secondarySid > 0 && state.secondarySid != state.sid) {
+        player.secondarySid = state.secondarySid
+        Log.d(TAG, "Restored secondary subtitle track: ${state.secondarySid} (user selection)")
+      } else {
+        player.secondarySid = -1
+      }
+    } else if (state.secondarySid > 0) {
+      player.sid = state.secondarySid
+      player.secondarySid = -1
+      Log.d(TAG, "Promoted saved secondary subtitle track ${state.secondarySid} to primary: single subtitle must stay at bottom")
     }
 
     if (state.aid > 0) {
@@ -2505,7 +2345,7 @@ class PlayerActivity :
     // Extract the new fileName before loading the file
     fileName = getFileName(intent)
     if (fileName.isBlank()) {
-      fileName = intent.data?.lastPathSegment ?: "Unknown Video"
+      fileName = intent.data?.lastPathSegment ?: "未知视频"
     }
     mediaIdentifier = getMediaIdentifier(intent, fileName)
 
@@ -3174,6 +3014,22 @@ class PlayerActivity :
     }
 
     val uri = playlist[index]
+
+    // Skip playlist items whose local file was deleted (e.g. externally) so we
+    // don't get stuck on a missing file. Advance to the next playable item,
+    // or finish if there's nothing left.
+    if (isLocalFileMissing(uri)) {
+      Log.w(TAG, "Skipping missing playlist item at index $index: $uri")
+      viewModel.showToast(getString(app.marlboroadvance.mpvex.R.string.toast_file_no_longer_exists))
+      val nextIndex = index + 1
+      if (nextIndex < playlist.size) {
+        loadPlaylistItemInternal(nextIndex)
+      } else if (playerPreferences.closeAfterReachingEndOfVideo.get()) {
+        finishAndRemoveTask()
+      }
+      return
+    }
+
     val playableUri = uri.openContentFd(this) ?: uri.toString()
 
     // Update playlist index
@@ -3388,7 +3244,9 @@ class PlayerActivity :
   /**
    * Generate a unique identifier for this media for playback state/history.
    *
-   * For local/offline files, uses fileName (display name or path).
+   * For local/offline files, uses fileName plus a hash of the file's stable full
+   * path so that two files with the same name in different directories get
+   * distinct playback histories.
    * For network streams via proxy (SMB/WebDAV/FTP), uses the stable network file path from intent extras.
    * For other network URIs (http/https/rtmp/etc.), uses a hash of the URI string to distinguish different streams.
    */
@@ -3412,8 +3270,11 @@ class PlayerActivity :
     return if (uri != null && (uri.scheme?.startsWith("http") == true || uri.scheme == "rtmp" || uri.scheme == "ftp" || uri.scheme == "rtsp" || uri.scheme == "mms")) {
       // For remote protocols: hash the URI so position is per-episode or per-stream.
       "${fileName}_${uri.toString().hashCode()}"
+    } else if (uri != null) {
+      // For local/file/content uris: include the full path so same-named files
+      // in different directories don't collide.
+      localMediaIdentifier(uri, fileName)
     } else {
-      // For local/file uris and unknown: just use fileName.
       fileName
     }
   }
@@ -3421,15 +3282,121 @@ class PlayerActivity :
   /**
    * Generate a unique identifier for this media from a URI and name.
    *
-   * For local/offline files, uses fileName (display name or path).
+   * For local/offline files, uses fileName plus a hash of the file's stable full
+   * path so that same-named files in different directories are distinct.
    * For network URIs (http/https/rtmp/etc.), uses a hash of the URI string to distinguish different streams.
    */
   private fun getMediaIdentifierFromUri(uri: Uri, fileName: String): String {
     return if (uri.scheme?.startsWith("http") == true || uri.scheme == "rtmp" || uri.scheme == "ftp" || uri.scheme == "rtsp" || uri.scheme == "mms") {
       "${fileName}_${uri.toString().hashCode()}"
     } else {
-      fileName
+      localMediaIdentifier(uri, fileName)
     }
+  }
+
+  /**
+   * Builds a stable, directory-aware identifier for a local file URI.
+   *
+   * The identifier combines the display name with a hash of the file's full path
+   * so that two files with the same name in different folders resolve to
+   * different playback-history keys. The path is resolved to a value that stays
+   * stable across app launches (unlike a temporary file descriptor).
+   */
+  private fun localMediaIdentifier(uri: Uri, fileName: String): String {
+    val stablePath = resolveStableLocalPath(uri)
+    return if (stablePath.isNullOrBlank()) {
+      // Fallback: keep the previous filename-only behavior if we can't resolve a path.
+      fileName
+    } else {
+      // Delegate to the shared helper so deletion/rename cleanup keys match exactly.
+      app.marlboroadvance.mpvex.utils.media.MediaIdentifier.forLocalPath(stablePath)
+    }
+  }
+
+  /**
+   * Resolves a stable, persistent path string for a local file URI, including its
+   * directory. Returns null if no stable path can be determined.
+   *
+   * - file:// -> the URI path (already the full filesystem path)
+   * - content:// -> the real filesystem path via MediaStore DATA, falling back to
+   *   RELATIVE_PATH + DISPLAY_NAME, then the URI string itself.
+   *
+   * Note: [Uri.resolveUri] is intentionally NOT used here because it returns a
+   * temporary /proc/self/fd file descriptor for content URIs, which changes every
+   * session and would not be a stable key.
+   */
+  private fun resolveStableLocalPath(uri: Uri): String? = runCatching {
+    when (uri.scheme) {
+      "file" -> uri.path
+      "content" -> {
+        contentResolver.query(
+          uri,
+          arrayOf(MediaStore.MediaColumns.DATA),
+          null,
+          null,
+          null,
+        )?.use { cursor ->
+          if (cursor.moveToFirst()) {
+            val columnIndex = cursor.getColumnIndex(MediaStore.MediaColumns.DATA)
+            if (columnIndex != -1) cursor.getString(columnIndex) else null
+          } else {
+            null
+          }
+        }?.takeIf { it.isNotBlank() } ?: resolveRelativeContentPath(uri) ?: uri.toString()
+      }
+
+      else -> uri.toString()
+    }
+  }.onFailure { e ->
+    Log.e(TAG, "Error resolving stable local path for $uri", e)
+  }.getOrNull()
+
+  /**
+   * Fallback for content URIs where MediaStore DATA is unavailable (e.g. on newer
+   * Android versions): builds a stable path from RELATIVE_PATH + DISPLAY_NAME.
+   */
+  private fun resolveRelativeContentPath(uri: Uri): String? = runCatching {
+    contentResolver.query(
+      uri,
+      arrayOf(MediaStore.MediaColumns.RELATIVE_PATH, MediaStore.MediaColumns.DISPLAY_NAME),
+      null,
+      null,
+      null,
+    )?.use { cursor ->
+      if (cursor.moveToFirst()) {
+        val relIdx = cursor.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH)
+        val nameIdx = cursor.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME)
+        val relative = if (relIdx != -1) cursor.getString(relIdx) else null
+        val name = if (nameIdx != -1) cursor.getString(nameIdx) else null
+        if (!relative.isNullOrBlank() && !name.isNullOrBlank()) "$relative$name" else null
+      } else {
+        null
+      }
+    }
+  }.getOrNull()
+
+  /**
+   * Returns true only when the given URI points at a LOCAL file that no longer
+   * exists on disk. Network streams, content URIs we can't resolve to a path,
+   * and existing files all return false (we don't want false positives that
+   * would block legitimate playback).
+   */
+  private fun isLocalFileMissing(uri: Uri): Boolean {
+    // Never treat network streams as "missing".
+    if (uri.scheme?.startsWith("http") == true ||
+      uri.scheme == "rtmp" || uri.scheme == "rtsp" ||
+      uri.scheme == "mms" || uri.scheme == "ftp" || uri.scheme == "ftps"
+    ) {
+      return false
+    }
+
+    val path = when (uri.scheme) {
+      "file" -> uri.path
+      "content" -> resolveStableLocalPath(uri)?.takeIf { it.startsWith("/") }
+      else -> uri.path?.takeIf { it.startsWith("/") }
+    } ?: return false
+
+    return runCatching { !File(path).exists() }.getOrDefault(false)
   }
 
   private fun generatePlaylistFromFolder(currentPath: String) {

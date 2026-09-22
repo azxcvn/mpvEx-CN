@@ -50,8 +50,8 @@ enum class Decoder(
   val title: String,
   val value: String,
 ) {
-  AutoCopy("Auto", "auto-copy"),
-  Auto("Auto", "auto"),
+  AutoCopy("自动", "auto-copy"),
+  Auto("自动", "auto"),
   SW("SW", "no"),
   HW("HW", "mediacodec-copy"),
   HWPlus("HW+", "mediacodec"),
@@ -74,12 +74,12 @@ enum class MPVProfile(
   val displayName: String,
   val value: String,
 ) {
-  Fast("Fast", "fast"),
-  Default("Default", "default"),
-  HighQuality("High Quality", "high-quality"),
-  GpuHQ("GPU HQ", "gpu-hq"),
-  LowLatency("Low Latency", "low-latency"),
-  SwFast("SW Fast", "sw-fast"),
+  Fast("快速", "fast"),
+  Default("默认", "default"),
+  HighQuality("高质量", "high-quality"),
+  GpuHQ("GPU 高质量", "gpu-hq"),
+  LowLatency("低延迟", "low-latency"),
+  SwFast("软件快速", "sw-fast"),
   ;
 
   override fun toString(): String = displayName
@@ -93,7 +93,6 @@ enum class Sheets {
   None,
   PlaybackSpeed,
   SubtitleTracks,
-  OnlineSubtitleSearch,
   AudioTracks,
   Chapters,
   Decoders,
@@ -101,7 +100,6 @@ enum class Sheets {
   VideoZoom,
   AspectRatios,
   Playlist,
-  AmbientConfig,
   FrameNavigation,
 }
 

@@ -78,8 +78,8 @@ data class ConfigEditorScreen(
       ConfigType.INPUT_CONF -> "input.conf" to preferences.inputConf.get()
     }
     val screenTitle = when (configType) {
-      ConfigType.MPV_CONF   -> "Edit mpv.conf"
-      ConfigType.INPUT_CONF -> "Edit input.conf"
+      ConfigType.MPV_CONF   -> "编辑 mpv.conf"
+      ConfigType.INPUT_CONF -> "编辑 input.conf"
     }
 
     var configText       by remember { mutableStateOf(initialValue) }
@@ -117,7 +117,7 @@ data class ConfigEditorScreen(
             val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())
             if (tree == null) {
               withContext(Dispatchers.Main) {
-                Toast.makeText(context, "No storage location set", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, "未设置存储位置", Toast.LENGTH_LONG).show()
               }
               return@launch
             }
@@ -125,7 +125,7 @@ data class ConfigEditorScreen(
             val confFile = existing ?: tree.createFile("text/plain", fileName)?.also { it.renameTo(fileName) }
             val uri = confFile?.uri ?: run {
               withContext(Dispatchers.Main) {
-                Toast.makeText(context, "Failed to create file", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, "创建文件失败", Toast.LENGTH_LONG).show()
               }
               return@launch
             }
@@ -137,12 +137,12 @@ data class ConfigEditorScreen(
 
           withContext(Dispatchers.Main) {
             hasUnsavedChanges = false
-            Toast.makeText(context, "$fileName saved", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "$fileName 已保存", Toast.LENGTH_SHORT).show()
             backStack.removeLastOrNull()
           }
         } catch (e: Exception) {
           withContext(Dispatchers.Main) {
-            Toast.makeText(context, "Failed to save: ${e.message}", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, "保存失败：${e.message}", Toast.LENGTH_LONG).show()
           }
         }
       }
@@ -163,7 +163,7 @@ data class ConfigEditorScreen(
             )
             if (hasUnsavedChanges) {
               Text(
-                text  = "Unsaved changes",
+                text  = "未保存的更改",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.secondary,
               )

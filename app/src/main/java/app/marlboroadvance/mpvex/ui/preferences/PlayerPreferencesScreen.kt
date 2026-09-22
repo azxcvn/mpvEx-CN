@@ -191,6 +191,8 @@ object PlayerPreferencesScreen : Screen {
               )
             }
           }
+
+
           // Seeking Section
           item {
             PreferenceSectionHeader(title = stringResource(R.string.pref_player_seeking_title))
