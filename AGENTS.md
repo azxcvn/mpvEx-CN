@@ -42,19 +42,19 @@
 ## 发布产物输出位置
 
 ```
-C:\Users\root\Desktop\release输出目录\mpvExCN\<flavor>\release
+C:\Users\Administrator\Desktop\release输出目录\mpvExCN\<flavor>\release
 ```
 
 一键「编译 → 校验签名 → 拷贝」（本机**没有** PowerShell 7，用 5.1；脚本是纯 ASCII，5.1 可直接跑）：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\build-release.ps1 -OutputDir "C:\Users\root\Desktop\release输出目录\mpvExCN\standard\release"
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\build-release.ps1 -OutputDir "C:\Users\Administrator\Desktop\release输出目录\mpvExCN\standard\release"
 ```
 
 或走 `.cmd` 包装（自动带上 `-ExecutionPolicy Bypass`，cmd 窗口/双击/任何工具都能调）：
 
 ```
-scripts\build-release.cmd -OutputDir "C:\Users\root\Desktop\release输出目录\mpvExCN\standard\release"
+scripts\build-release.cmd -OutputDir "C:\Users\Administrator\Desktop\release输出目录\mpvExCN\standard\release"
 ```
 
 更多细节（环境准备、手动步骤、常见报错）见 [`docs/BUILD-RELEASE.md`](docs/BUILD-RELEASE.md)。

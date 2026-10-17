@@ -25,7 +25,7 @@
 ```properties
 # 已被 .gitignore 忽略，切勿提交
 # storeFile 请用正斜杠：.properties 里反斜杠是转义符
-storeFile=C:/Users/root/Desktop/签名/mpv/mpv
+storeFile=C:/Users/Administrator/Desktop/签名/mpv/mpv
 storePassword=****
 keyAlias=key0
 keyPassword=****
@@ -35,7 +35,7 @@ keyPassword=****
 
 - 文件**不存在**时，release 变体为**未签名包**，构建不会失败 —— 别人 clone 仓库或以后接 CI 都不需要密钥。
 - 文件存在但缺字段时，构建会直接报 `keystore.properties is missing 'xxx'`，不会静默产出未签名包。
-- 路径按 **UTF-8** 读取，因此含中文的目录（如 `C:/Users/root/Desktop/签名/...`）可以正常使用。
+- 路径按 **UTF-8** 读取，因此含中文的目录（如 `C:/Users/Administrator/Desktop/签名/...`）可以正常使用。
 - 签名方案固定为 **v1=false / v2=true / v3=false**，与历史发布包一致。要做密钥轮换时，把
   `enableV3Signing = false` 改成 `true`。
 - `preview` 构建类型会强制 `signingConfig = null`（不签名），不受影响。
@@ -51,7 +51,7 @@ keyPassword=****
 ## 3. 编译
 
 ```powershell
-cd C:\Users\root\Desktop\mpvEx-master
+cd C:\Users\Administrator\Desktop\mpvEx-master
 
 # 签名 release（standard 变体）
 .\gradlew.bat :app:assembleStandardRelease
@@ -81,13 +81,13 @@ app\build\outputs\apk\standard\release\
 ## 4. 一键脚本（推荐）
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\build-release.ps1 -OutputDir "C:\Users\root\Desktop\release输出目录\mpvExCN\standard\release"
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\build-release.ps1 -OutputDir "C:\Users\Administrator\Desktop\release输出目录\mpvExCN\standard\release"
 ```
 
 也可以走 `.cmd` 包装（自动带上 `-ExecutionPolicy Bypass`，在 cmd 窗口、双击或任何工具里都能调用）：
 
 ```
-scripts\build-release.cmd -OutputDir "C:\Users\root\Desktop\release输出目录\mpvExCN\standard\release"
+scripts\build-release.cmd -OutputDir "C:\Users\Administrator\Desktop\release输出目录\mpvExCN\standard\release"
 ```
 
 脚本会：编译 → 用 `apksigner` 校验签名并打印证书指纹 → 拷贝 APK、`output-metadata.json`、
@@ -113,11 +113,11 @@ scripts\build-release.cmd -OutputDir "C:\Users\root\Desktop\release输出目录\
 ## 5. 手动流程（等价于脚本）
 
 ```powershell
-cd C:\Users\root\Desktop\mpvEx-master
+cd C:\Users\Administrator\Desktop\mpvEx-master
 .\gradlew.bat :app:assembleStandardRelease
 
 $src = "app\build\outputs\apk\standard\release"
-$dst = "C:\Users\root\Desktop\release输出目录\mpvExCN\standard\release"
+$dst = "C:\Users\Administrator\Desktop\release输出目录\mpvExCN\standard\release"
 Copy-Item "$src\*.apk" $dst -Force
 Copy-Item "$src\output-metadata.json" $dst -Force
 Copy-Item "$src\baselineProfiles" $dst -Recurse -Force
@@ -126,7 +126,7 @@ Copy-Item "$src\baselineProfiles" $dst -Recurse -Force
 校验（可选）：
 
 ```powershell
-$bt = "C:\Users\root\AppData\Local\Android\Sdk\build-tools\36.1.0"
+$bt = "C:\Dev\sdk\android-sdk\build-tools\36.1.0"
 & "$bt\apksigner.bat" verify --print-certs "$dst\app-standard-arm64-v8a-release.apk"
 & "$bt\zipalign.exe" -c -p 4 "$dst\app-standard-arm64-v8a-release.apk"
 ```
@@ -147,7 +147,7 @@ $bt = "C:\Users\root\AppData\Local\Android\Sdk\build-tools\36.1.0"
 
 **Q：`compileSdk 37` 报错 / 找不到 Platform 37**
 在 Android Studio 的 SDK Manager 里安装 Android SDK Platform 37（本机装在
-`C:\Users\root\AppData\Local\Android\Sdk\platforms\android-37.0`）。
+`C:\Dev\sdk\android-sdk\platforms\android-37.0`）。
 
 **Q：构建产物里没有 x86_64 包，模拟器装不上**
 正常。仓库只打 arm64-v8a / armeabi-v7a。见 `AGENTS.md` 的「ABI 拆分」一节，临时加 `x86_64` 后记得改回。

@@ -33,7 +33,7 @@
 .\gradlew.bat :app:assembleStandardRelease
 
 # 一键编译 + 校验签名 + 输出到发布目录
-scripts\build-release.cmd -OutputDir "C:\Users\root\Desktop\release输出目录\mpvExCN\standard\release"
+scripts\build-release.cmd -OutputDir "C:\Users\Administrator\Desktop\release输出目录\mpvExCN\standard\release"
 ```
 
 签名凭据从项目根目录的 `keystore.properties` 读取（该文件已被 git 忽略；缺失时 release 为未签名包，不影响构建）。
