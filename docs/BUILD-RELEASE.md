@@ -25,7 +25,7 @@
 ```properties
 # 已被 .gitignore 忽略，切勿提交
 # storeFile 请用正斜杠：.properties 里反斜杠是转义符
-storeFile=C:/Users/Administrator/Desktop/签名/mpv/mpv
+storeFile=keystore/mpv.jks
 storePassword=****
 keyAlias=key0
 keyPassword=****
@@ -35,7 +35,7 @@ keyPassword=****
 
 - 文件**不存在**时，release 变体为**未签名包**，构建不会失败 —— 别人 clone 仓库或以后接 CI 都不需要密钥。
 - 文件存在但缺字段时，构建会直接报 `keystore.properties is missing 'xxx'`，不会静默产出未签名包。
-- 路径按 **UTF-8** 读取，因此含中文的目录（如 `C:/Users/Administrator/Desktop/签名/...`）可以正常使用。
+- 证书已随项目放在 `keystore/mpv.jks`，`storeFile` 用**相对项目根目录**的路径，整个项目文件夹搬到哪都能直接签名。路径按 **UTF-8** 读取，含中文的目录也能正常使用。
 - 签名方案固定为 **v1=false / v2=true / v3=false**，与历史发布包一致。要做密钥轮换时，把
   `enableV3Signing = false` 改成 `true`。
 - `preview` 构建类型会强制 `signingConfig = null`（不签名），不受影响。
